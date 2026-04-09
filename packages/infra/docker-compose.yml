@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+  gm-bot:
+    build: ../gm-bot
+    env_file: ../../.env.gm
+    volumes:
+      - gm-data:/data
+    networks:
+      - game-net
+    depends_on:
+      - mail
+      - calendar
+      - game-data
+
+  mail:
+    image: mailserver/docker-mailserver:latest
+    hostname: mail.survivor.local
+    domainname: survivor.local
+    ports:
+      - "25:25"
+      - "143:143"
+      - "587:587"
+    volumes:
+      - mail-data:/var/mail
+      - mail-state:/var/mail-state
+      - mail-logs:/var/log/mail
+    environment:
+      - ENABLE_SPAMASSASSIN=0
+      - ENABLE_CLAMAV=0
+      - ENABLE_FAIL2BAN=0
+      - PERMIT_DOCKER=network
+      - ONE_DIR=1
+      - SSL_TYPE=
+    networks:
+      game-net:
+        aliases:
+          - mail.survivor.local
+
+  calendar:
+    image: tomsquest/docker-radicale:latest
+    volumes:
+      - calendar-data:/data
+    networks:
+      game-net:
+        aliases:
+          - calendar.survivor.local
+
+  game-data:
+    build: ./game-data-server
+    volumes:
+      - ./game-data-content:/data:ro
+    networks:
+      game-net:
+        aliases:
+          - game-data.local
+
+  # Example agent container (contestants fork this)
+  agent-example:
+    build: ../agent-template
+    secrets:
+      - discord_token
+      - llm_api_key
+    networks:
+      - game-net
+    depends_on:
+      - mail
+      - calendar
+      - game-data
+
+secrets:
+  discord_token:
+    file: ../../secrets/example-agent/discord_token.txt
+  llm_api_key:
+    file: ../../secrets/example-agent/llm_api_key.txt
+
+volumes:
+  gm-data:
+  mail-data:
+  mail-state:
+  mail-logs:
+  calendar-data:
+
+networks:
+  game-net:
+    driver: bridge

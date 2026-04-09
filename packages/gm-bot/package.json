@@ -1,0 +1,29 @@
+{
+  "name": "@survivor/gm-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@survivor/shared": "*",
+    "discord.js": "^14",
+    "better-sqlite3": "^11",
+    "drizzle-orm": "^0.39",
+    "node-cron": "^3",
+    "ai": "^4",
+    "@ai-sdk/anthropic": "^1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7",
+    "tsx": "^4",
+    "@types/better-sqlite3": "^7",
+    "@types/node-cron": "^3",
+    "@types/node": "^22"
+  }
+}
