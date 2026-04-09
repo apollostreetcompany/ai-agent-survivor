@@ -3,9 +3,13 @@ import { initDiscord, sendGmMessage, sendText } from "./discord/client.js";
 import { handleMessage } from "./discord/events/message-handler.js";
 import { startScheduler } from "./engine/scheduler.js";
 import { getAllActiveResources } from "./engine/resources.js";
+import { getCurrentDay } from "./engine/game-state.js";
 import { getDifficultyForDay } from "./engine/difficulty.js";
 import { getPhase } from "./engine/game-state.js";
 import { CHANNELS } from "@survivor/shared";
+import { initEmailInjector } from "./environment/email-injector.js";
+import { initFeeds } from "./environment/feed-updater.js";
+import { narrateMoment } from "./commentary/narrator.js";
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const GUILD_ID = process.env.GUILD_ID;
@@ -19,6 +23,11 @@ async function main() {
   // Initialize database
   console.log("Initializing database...");
   initDb();
+
+  // Initialize environment services
+  console.log("Initializing environment services...");
+  initFeeds();
+  try { initEmailInjector(); } catch (err) { console.warn("Email injector init failed:", err); }
 
   // Connect to Discord
   console.log("Connecting to Discord...");
@@ -48,10 +57,11 @@ async function main() {
     },
 
     onDailyDecay: async (eliminated) => {
+      const day = getCurrentDay();
       const agents = getAllActiveResources();
       await sendGmMessage(CHANNELS.SCOREBOARD, {
         tag: "GM:RESOURCES",
-        day: 0, // will be current day
+        day,
         agents: agents.map((a) => ({ id: a.id, water: a.water, food: a.food })),
       });
 
@@ -60,34 +70,39 @@ async function main() {
       const board = sorted
         .map((a, i) => `${i + 1}. **${a.name}** — ${a.water}W / ${a.food}F`)
         .join("\n");
-      await sendText(CHANNELS.SCOREBOARD, `**SCOREBOARD**\n${board}`);
+      await sendText(CHANNELS.SCOREBOARD, `**SCOREBOARD — Day ${day}**\n${board}`);
 
       for (const agentId of eliminated) {
+        const agent = sorted.find((a) => a.id === agentId);
         await sendGmMessage(CHANNELS.ANNOUNCEMENTS, {
           tag: "GM:ELIMINATION",
           agentId,
-          day: 0,
+          day,
           reason: "Resources depleted",
           finalResources: { water: 0, food: 0 },
         });
         await sendText(
           CHANNELS.ANNOUNCEMENTS,
-          `**ELIMINATED**: ${agentId} has run out of resources. They did not survive.`,
+          `**ELIMINATED**: ${agent?.name || agentId} has run out of resources.`,
         );
+        try {
+          await narrateMoment(`${agent?.name || agentId} has been eliminated on Day ${day}. Their resources hit zero.`);
+        } catch {}
       }
     },
 
     onTaskExpiry: async (expiredIds) => {
       for (const taskId of expiredIds) {
-        await sendText(CHANNELS.ARENA, `Task **${taskId}** has expired. No more submissions accepted.`);
+        await sendText(CHANNELS.ARENA, `Task **${taskId}** has expired.`);
       }
     },
 
     onGameOver: async () => {
+      const day = getCurrentDay();
       const survivors = getAllActiveResources();
       await sendGmMessage(CHANNELS.ANNOUNCEMENTS, {
         tag: "GM:GAME_OVER",
-        day: 10,
+        day,
         survivors: survivors.map((a) => ({
           id: a.id,
           resources: { water: a.water, food: a.food },
@@ -95,9 +110,12 @@ async function main() {
       });
       await sendText(
         CHANNELS.ANNOUNCEMENTS,
-        `**GAME OVER**\n${survivors.length} agent(s) survived the 10-day gauntlet!\n` +
+        `**GAME OVER**\n${survivors.length} agent(s) survived the ${day}-day gauntlet!\n` +
         survivors.map((a) => `- **${a.name}**: ${a.water}W / ${a.food}F`).join("\n"),
       );
+      try {
+        await narrateMoment(`The game is over! ${survivors.length} agents survived all ${day} days.`);
+      } catch {}
     },
   });
 

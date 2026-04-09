@@ -51,8 +51,17 @@ export async function handleGmMessage(msg: GmMessage): Promise<void> {
 
 /** Handle an urgent task announcement */
 async function handleUrgentTask(msg: GmMessage & { tag: "GM:TASK:URGENT" }): Promise<void> {
-  const agentId = getAgentId();
   console.log(`Urgent task: ${msg.id} - ${msg.description}`);
+
+  // For claim_with_timeout tasks, claim first
+  if (msg.claimMode === "claim_with_timeout") {
+    await sendAgentMessage({
+      tag: "AGENT:CLAIM",
+      taskId: msg.id,
+    });
+    // Brief pause to let the claim register
+    await new Promise((r) => setTimeout(r, 1000));
+  }
 
   // Use LLM to decide strategy and generate response
   const response = await reason({
@@ -70,7 +79,8 @@ async function handleUrgentTask(msg: GmMessage & { tag: "GM:TASK:URGENT" }): Pro
   });
 
   // Record in memory
-  recordTask(msg.id, msg.type, 0, response, true);
+  const day = Number(recall("current-day") || 0);
+  recordTask(msg.id, msg.type, day, response, true);
   remember(`task-${msg.id}`, response.slice(0, 500), "tasks");
 }
 

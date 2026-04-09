@@ -1,4 +1,4 @@
-import { eq, and, ne } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
 import {
   STARTING_RESOURCES,

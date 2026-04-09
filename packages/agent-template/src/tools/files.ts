@@ -1,7 +1,7 @@
-import { readFileSync, writeFileSync, readdirSync, existsSync, statSync } from "fs";
-import { join } from "path";
+import { readFileSync, writeFileSync, readdirSync, existsSync } from "fs";
+import { join, resolve } from "path";
 
-const WORKSPACE = process.env.AGENT_WORKSPACE || "./workspace";
+const WORKSPACE = resolve(process.env.AGENT_WORKSPACE || "./workspace");
 
 /** Read a file from the agent's workspace */
 export function readFile(path: string): { content: string; success: boolean; error?: string } {
@@ -42,10 +42,10 @@ export function exists(path: string): boolean {
   return existsSync(resolvePath(path));
 }
 
-/** Resolve a path relative to the workspace */
+/** Resolve a path relative to the workspace, preventing traversal */
 function resolvePath(path: string): string {
-  const resolved = join(WORKSPACE, path);
-  // Prevent path traversal
+  const resolved = resolve(WORKSPACE, path);
+  // Prevent path traversal -- resolved path must be within workspace
   if (!resolved.startsWith(WORKSPACE)) {
     throw new Error("Path traversal detected");
   }

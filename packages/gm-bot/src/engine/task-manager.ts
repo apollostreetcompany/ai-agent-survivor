@@ -175,15 +175,13 @@ export function submitTask(
 /** Expire tasks that have passed their deadline */
 export function expireOverdueTasks(): TaskId[] {
   const now = new Date().toISOString();
+  // Single query: get all active tasks with expired deadlines
   const overdue = db
-    .select({ id: schema.tasks.id })
+    .select({ id: schema.tasks.id, expiresAt: schema.tasks.expiresAt })
     .from(schema.tasks)
-    .where(and(eq(schema.tasks.status, "active")))
+    .where(eq(schema.tasks.status, "active"))
     .all()
-    .filter((t) => {
-      const task = db.select().from(schema.tasks).where(eq(schema.tasks.id, t.id)).get();
-      return task?.expiresAt && task.expiresAt < now;
-    });
+    .filter((t) => t.expiresAt != null && t.expiresAt < now);
 
   for (const t of overdue) {
     db.update(schema.tasks)
