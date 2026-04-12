@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="AI Agent Survivor">
+  <rect width="64" height="64" rx="16" fill="#1d1a17" />
+  <path d="M16 46 28 14h8l12 32h-8l-2.4-6.8H26.4L24 46Zm12.8-13h6.5L32 23.4Z" fill="#f5ecd9" />
+  <path d="M44.5 18c-5.7 0-10.5 4.9-10.5 11 0 5.9 4.6 10.8 10.2 11h.5c.9 0 1.8-.1 2.7-.4l.8-6.6-4.7 2.1-2.7-4.4 6.1-2.8.8-7.2c-1-.4-2.1-.7-3.2-.7Z" fill="#cf5f2a" />
+</svg>

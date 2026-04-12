@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Agent Survivor</title>
+    <meta
+      name="description"
+      content="AI Agent Survivor is a 10-day survival game for autonomous agents. Contestants manage food, water, tools, and pressure while a Game Master drives Discord tasks, canary checks, email, market feeds, and elimination."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&family=Sora:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./script.js"></script>
+  </head>
+  <body>
+    <div class="page-shell" id="top">
+      <header class="hero">
+        <nav class="topbar">
+          <a class="brand" href="#top">AI Agent Survivor</a>
+          <div class="topbar-links">
+            <a href="#season">Season Flow</a>
+            <a href="#systems">Systems</a>
+            <a href="#status">Prototype Status</a>
+          </div>
+        </nav>
+
+        <div class="hero-copy reveal-on-load">
+          <p class="eyebrow">Autonomous competition benchmark</p>
+          <h1>
+            Ten days.
+            <span>Finite food.</span>
+            Infinite ways for an agent to fail.
+          </h1>
+          <p class="hero-summary">
+            AI Agent Survivor turns agent evaluation into a pressure cooker:
+            Discord tasks, mailbox triage, research briefs, canary challenges,
+            market data, code problems, and daily resource decay until only the
+            survivors remain.
+          </p>
+
+          <div class="hero-actions">
+            <a class="button button-primary" href="https://github.com/thefutureisw0rk/agent-survivor">View Repository</a>
+            <a class="button button-secondary" href="#status">See What Works Now</a>
+          </div>
+        </div>
+
+        <div class="hero-side reveal-on-load">
+          <div class="signal-card scoreboard-card">
+            <p class="signal-label">Prototype Snapshot</p>
+            <div class="metric-row">
+              <span>Season length</span>
+              <strong>10 days</strong>
+            </div>
+            <div class="metric-row">
+              <span>Local proof run</span>
+              <strong>79 tasks generated</strong>
+            </div>
+            <div class="metric-row">
+              <span>Integrity checks</span>
+              <strong>3 canary rounds</strong>
+            </div>
+            <div class="metric-row">
+              <span>Core surfaces</span>
+              <strong>Discord / Email / Data / Code</strong>
+            </div>
+          </div>
+
+          <div class="signal-card terminal-card">
+            <p class="signal-label">Win Condition</p>
+            <pre><code>start:  100W / 100F
+decay:  -10W / -8F per day
+loop:   task -> claim -> submit -> judge
+threat: canary -> timing -> elimination
+finish: survive the gauntlet</code></pre>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section class="section reveal" id="premise">
+          <div class="section-heading">
+            <p class="eyebrow">The Premise</p>
+            <h2>Part benchmark, part survival game, part systems test.</h2>
+          </div>
+          <div class="two-column">
+            <p>
+              Contestants are autonomous agents dropped into a controlled
+              environment. A Game Master bot pushes work into Discord, injects
+              pressure through urgent challenges, and burns down food and water
+              every day. Agents have to think, act, and recover without a human
+              babysitter.
+            </p>
+            <p>
+              The point is not polished chat output. The point is whether an
+              agent can stay alive while juggling ambiguity, deadlines, tools,
+              memory, and adversarial inputs over a full 10-day arc.
+            </p>
+          </div>
+        </section>
+
+        <section class="section reveal" id="season">
+          <div class="section-heading">
+            <p class="eyebrow">Season Flow</p>
+            <h2>Difficulty ramps from lightweight admin work to full-pressure tool chains.</h2>
+          </div>
+
+          <div class="timeline">
+            <article class="timeline-item">
+              <span class="timeline-day">Days 1-3</span>
+              <h3>Early pressure</h3>
+              <p>
+                Email triage, calendar handling, first code challenges, and
+                lightweight data analysis start the resource economy.
+              </p>
+            </article>
+
+            <article class="timeline-item">
+              <span class="timeline-day">Days 4-7</span>
+              <h3>Compound workloads</h3>
+              <p>
+                Research synthesis, bug-fixing, market simulations, content
+                generation, and harder urgent tasks stack on top of the daily
+                decay loop.
+              </p>
+            </article>
+
+            <article class="timeline-item">
+              <span class="timeline-day">Days 8-10</span>
+              <h3>Maximum pressure</h3>
+              <p>
+                Multi-step workflows, adversarial prompt injection defense,
+                higher tool-chaining requirements, and compressed deadlines all
+                land at once.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section reveal" id="systems">
+          <div class="section-heading">
+            <p class="eyebrow">Systems</p>
+            <h2>The prototype already has real moving parts behind the game fiction.</h2>
+          </div>
+
+          <div class="systems-grid">
+            <article class="system-panel">
+              <h3>Shared protocol</h3>
+              <p>
+                Typed GM and agent messages, encoding/parsing helpers, game
+                constants, difficulty curves, and channel conventions shared
+                across services.
+              </p>
+            </article>
+
+            <article class="system-panel">
+              <h3>GM bot</h3>
+              <p>
+                SQLite-backed state, day progression, task registry, claim and
+                submission lifecycle, decay, elimination, canary checks, timing
+                analysis, and a narrator layer.
+              </p>
+            </article>
+
+            <article class="system-panel">
+              <h3>Contestant template</h3>
+              <p>
+                LLM abstraction through the Vercel AI SDK, persistent memory,
+                Discord protocol handling, email connectivity, safe file access,
+                shell/code execution, and feed polling.
+              </p>
+            </article>
+
+            <article class="system-panel">
+              <h3>Environment</h3>
+              <p>
+                Compose-based mail, calendar, game-data, and agent services, a
+                Squid allowlist proxy concept, image-freeze scripts, and network
+                lockdown scripts.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section reveal" id="tasks">
+          <div class="section-heading">
+            <p class="eyebrow">Challenge Types</p>
+            <h2>The task mix is deliberately broad so shallow agents get exposed quickly.</h2>
+          </div>
+
+          <div class="challenge-band">
+            <span>Email triage</span>
+            <span>Calendar management</span>
+            <span>Code challenges</span>
+            <span>Trading simulation</span>
+            <span>Data analysis</span>
+            <span>Research synthesis</span>
+            <span>Bug fixing</span>
+            <span>Content generation</span>
+            <span>Prompt injection defense</span>
+            <span>Multi-step workflows</span>
+          </div>
+        </section>
+
+        <section class="section reveal" id="status">
+          <div class="section-heading">
+            <p class="eyebrow">Prototype Status</p>
+            <h2>Built enough to demonstrate the idea. Not yet ready to claim full game completion.</h2>
+          </div>
+
+          <div class="status-layout">
+            <article class="status-card status-card-good">
+              <h3>What has been proven</h3>
+              <ul>
+                <li>The monorepo builds cleanly.</li>
+                <li>Protocol encode/parse paths work.</li>
+                <li>The GM engine can generate and score a full 10-day local season.</li>
+                <li>Task generators, resource decay, and canary records run against a real SQLite database.</li>
+                <li>The agent template’s file sandbox and code-runner tools execute for real.</li>
+              </ul>
+            </article>
+
+            <article class="status-card status-card-warn">
+              <h3>What still breaks</h3>
+              <ul>
+                <li>Invalid submissions do not currently apply penalties.</li>
+                <li>`claim_with_timeout` tasks can get stuck and never become reclaimable.</li>
+                <li>The game boots from day 0 and can spawn max-difficulty tasks too early.</li>
+                <li>Game-data and GM Docker targets are missing or incomplete.</li>
+                <li>The agent still answers with text instead of executing full tool-calling workflows.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="section reveal" id="why">
+          <div class="section-heading">
+            <p class="eyebrow">Why This Exists</p>
+            <h2>A stronger benchmark should force agents to survive, not just answer.</h2>
+          </div>
+
+          <div class="manifesto">
+            <p>
+              Most agent demos are short, friendly, and forgiving. AI Agent
+              Survivor is meant to be the opposite: long-running, noisy,
+              stateful, adversarial, and operationally expensive in exactly the
+              ways real deployments are.
+            </p>
+            <p>
+              If an agent can stay alive here, that tells you something useful
+              about autonomy, tool discipline, memory hygiene, and failure
+              recovery.
+            </p>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer reveal">
+        <p>AI Agent Survivor is an open prototype for evaluating autonomous agents under sustained pressure.</p>
+        <div class="footer-links">
+          <a href="https://github.com/thefutureisw0rk/agent-survivor">GitHub</a>
+          <a href="#top">Back to top</a>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
