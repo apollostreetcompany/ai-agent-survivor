@@ -1,11 +1,128 @@
-version: "3.9"
-
 services:
   gm-bot:
-    build: ../gm-bot
-    env_file: ../../.env.gm
+    build:
+      context: ../..
+      dockerfile: packages/gm-bot/Dockerfile
+    environment:
+      DISCORD_TOKEN: ${GM_DISCORD_TOKEN:-}
+      GUILD_ID: ${GUILD_ID:-}
+      DB_PATH: /app/packages/gm-bot/data/survivor.db
+      GAME_DATA_DIR: /app/packages/gm-bot/game-data-content
+      MAIL_HOST: mail.survivor.local
+      GM_MAIL_PASS: ${GM_MAIL_PASS:-}
+      NARRATOR_API_KEY: ${NARRATOR_API_KEY:-}
+      NARRATOR_MODEL: ${NARRATOR_MODEL:-}
     volumes:
-      - gm-data:/data
+      - gm-data:/app/packages/gm-bot/data
+      - game-data-content:/app/packages/gm-bot/game-data-content
+    networks:
+      - game-net
+    depends_on:
+      - mail
+      - calendar
+      - game-data
+
+  agent-alpha:
+    build:
+      context: ../..
+      dockerfile: packages/agent-template/Dockerfile
+    environment:
+      AGENT_ID: agent-alpha
+      DISCORD_TOKEN: ${AGENT_ALPHA_DISCORD_TOKEN:-}
+      GUILD_ID: ${GUILD_ID:-}
+      LLM_API_KEY: ${AGENT_ALPHA_LLM_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      LLM_MODEL: ${AGENT_ALPHA_LLM_MODEL:-}
+      MAIL_HOST: mail.survivor.local
+      MAIL_USER: ${AGENT_ALPHA_MAIL_USER:-agent-alpha}
+      MAIL_PASS: ${AGENT_ALPHA_MAIL_PASS:-}
+      GAME_DATA_URL: http://game-data.local
+      MEMORY_DB_PATH: /app/data/agent-memory.db
+      AGENT_WORKSPACE: /app/workspace
+    volumes:
+      - agent-alpha-data:/app/data
+      - agent-alpha-workspace:/app/workspace
+    networks:
+      - game-net
+    depends_on:
+      - mail
+      - calendar
+      - game-data
+
+  agent-bravo:
+    build:
+      context: ../..
+      dockerfile: packages/agent-template/Dockerfile
+    environment:
+      AGENT_ID: agent-bravo
+      DISCORD_TOKEN: ${AGENT_BRAVO_DISCORD_TOKEN:-}
+      GUILD_ID: ${GUILD_ID:-}
+      LLM_API_KEY: ${AGENT_BRAVO_LLM_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      LLM_MODEL: ${AGENT_BRAVO_LLM_MODEL:-}
+      MAIL_HOST: mail.survivor.local
+      MAIL_USER: ${AGENT_BRAVO_MAIL_USER:-agent-bravo}
+      MAIL_PASS: ${AGENT_BRAVO_MAIL_PASS:-}
+      GAME_DATA_URL: http://game-data.local
+      MEMORY_DB_PATH: /app/data/agent-memory.db
+      AGENT_WORKSPACE: /app/workspace
+    volumes:
+      - agent-bravo-data:/app/data
+      - agent-bravo-workspace:/app/workspace
+    networks:
+      - game-net
+    depends_on:
+      - mail
+      - calendar
+      - game-data
+
+  agent-charlie:
+    build:
+      context: ../..
+      dockerfile: packages/agent-template/Dockerfile
+    environment:
+      AGENT_ID: agent-charlie
+      DISCORD_TOKEN: ${AGENT_CHARLIE_DISCORD_TOKEN:-}
+      GUILD_ID: ${GUILD_ID:-}
+      LLM_API_KEY: ${AGENT_CHARLIE_LLM_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      LLM_MODEL: ${AGENT_CHARLIE_LLM_MODEL:-}
+      MAIL_HOST: mail.survivor.local
+      MAIL_USER: ${AGENT_CHARLIE_MAIL_USER:-agent-charlie}
+      MAIL_PASS: ${AGENT_CHARLIE_MAIL_PASS:-}
+      GAME_DATA_URL: http://game-data.local
+      MEMORY_DB_PATH: /app/data/agent-memory.db
+      AGENT_WORKSPACE: /app/workspace
+    volumes:
+      - agent-charlie-data:/app/data
+      - agent-charlie-workspace:/app/workspace
+    networks:
+      - game-net
+    depends_on:
+      - mail
+      - calendar
+      - game-data
+
+  agent-delta:
+    build:
+      context: ../..
+      dockerfile: packages/agent-template/Dockerfile
+    environment:
+      AGENT_ID: agent-delta
+      DISCORD_TOKEN: ${AGENT_DELTA_DISCORD_TOKEN:-}
+      GUILD_ID: ${GUILD_ID:-}
+      LLM_API_KEY: ${AGENT_DELTA_LLM_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      LLM_MODEL: ${AGENT_DELTA_LLM_MODEL:-}
+      MAIL_HOST: mail.survivor.local
+      MAIL_USER: ${AGENT_DELTA_MAIL_USER:-agent-delta}
+      MAIL_PASS: ${AGENT_DELTA_MAIL_PASS:-}
+      GAME_DATA_URL: http://game-data.local
+      MEMORY_DB_PATH: /app/data/agent-memory.db
+      AGENT_WORKSPACE: /app/workspace
+    volumes:
+      - agent-delta-data:/app/data
+      - agent-delta-workspace:/app/workspace
     networks:
       - game-net
     depends_on:
@@ -26,12 +143,12 @@ services:
       - mail-state:/var/mail-state
       - mail-logs:/var/log/mail
     environment:
-      - ENABLE_SPAMASSASSIN=0
-      - ENABLE_CLAMAV=0
-      - ENABLE_FAIL2BAN=0
-      - PERMIT_DOCKER=network
-      - ONE_DIR=1
-      - SSL_TYPE=
+      ENABLE_SPAMASSASSIN: "0"
+      ENABLE_CLAMAV: "0"
+      ENABLE_FAIL2BAN: "0"
+      PERMIT_DOCKER: network
+      ONE_DIR: "1"
+      SSL_TYPE: ""
     networks:
       game-net:
         aliases:
@@ -47,39 +164,30 @@ services:
           - calendar.survivor.local
 
   game-data:
-    build: ./game-data-server
+    image: nginx:alpine
     volumes:
-      - ./game-data-content:/data:ro
+      - game-data-content:/usr/share/nginx/html:ro
+      - ./game-data-nginx.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       game-net:
         aliases:
           - game-data.local
 
-  # Example agent container (contestants fork this)
-  agent-example:
-    build: ../agent-template
-    secrets:
-      - discord_token
-      - llm_api_key
-    networks:
-      - game-net
-    depends_on:
-      - mail
-      - calendar
-      - game-data
-
-secrets:
-  discord_token:
-    file: ../../secrets/example-agent/discord_token.txt
-  llm_api_key:
-    file: ../../secrets/example-agent/llm_api_key.txt
-
 volumes:
   gm-data:
+  game-data-content:
   mail-data:
   mail-state:
   mail-logs:
   calendar-data:
+  agent-alpha-data:
+  agent-alpha-workspace:
+  agent-bravo-data:
+  agent-bravo-workspace:
+  agent-charlie-data:
+  agent-charlie-workspace:
+  agent-delta-data:
+  agent-delta-workspace:
 
 networks:
   game-net:

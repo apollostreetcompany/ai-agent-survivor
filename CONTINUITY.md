@@ -26,12 +26,13 @@ Success criteria:
 - [x] Bead 2: Operator/admin command or script to bootstrap and start a season without manual database edits.
 - [x] Bead 3: Local agent runner path that can connect a template agent to the GM protocol.
 - [x] Bead 4: First end-to-end smoke test with GM, seeded agents, and a task submission loop.
+- [x] Bead 5: Containerized four-agent launch stack with per-agent IDs and runtime configuration.
 
 ### Now
-- [ ] Bead 5: Containerized four-agent launch stack with per-agent IDs and runtime configuration.
+- [ ] Bead 6: Discord GM command surface for season setup and smoke checks.
 
 ### Next
-- [ ] Bead 6: Discord GM command surface for season setup and smoke checks.
+- [ ] Bead 7: Runtime readiness docs/checklist for Discord tokens, LLM keys, and launch commands.
 
 ## Open Questions
 - Should prototype agents all run from the existing agent-template container, or should each default agent have a distinct strategy profile?

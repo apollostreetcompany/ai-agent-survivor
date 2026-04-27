@@ -52,6 +52,10 @@
         "typescript": "^5.7",
       },
     },
+    "packages/infra": {
+      "name": "@survivor/infra",
+      "version": "0.1.0",
+    },
     "packages/shared": {
       "name": "@survivor/shared",
       "version": "0.1.0",
@@ -150,6 +154,8 @@
     "@survivor/agent-template": ["@survivor/agent-template@workspace:packages/agent-template"],
 
     "@survivor/gm-bot": ["@survivor/gm-bot@workspace:packages/gm-bot"],
+
+    "@survivor/infra": ["@survivor/infra@workspace:packages/infra"],
 
     "@survivor/shared": ["@survivor/shared@workspace:packages/shared"],
 
