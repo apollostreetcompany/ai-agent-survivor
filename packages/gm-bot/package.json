@@ -7,6 +7,10 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
+    "season": "tsx src/cli/season.ts",
+    "season:bootstrap": "tsx src/cli/season.ts bootstrap",
+    "season:start": "tsx src/cli/season.ts start",
+    "season:setup": "tsx src/cli/season.ts setup",
     "test": "bun --filter @survivor/shared build && node --import tsx --test test/*.test.ts",
     "start": "node dist/index.js",
     "clean": "rm -rf dist"

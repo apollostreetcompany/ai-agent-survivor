@@ -23,12 +23,12 @@ Success criteria:
 ## State
 ### Done
 - [x] Bead 1: Playable agent bootstrap and activation path.
+- [x] Bead 2: Operator/admin command or script to bootstrap and start a season without manual database edits.
 
 ### Now
-- [ ] Bead 2: Operator/admin command or script to bootstrap and start a season without manual database edits.
+- [ ] Bead 3: Local agent runner path that can connect a template agent to the GM protocol.
 
 ### Next
-- [ ] Bead 3: Local agent runner path that can connect a template agent to the GM protocol.
 - [ ] Bead 4: First end-to-end smoke test with GM, seeded agents, and a task submission loop.
 
 ## Open Questions
