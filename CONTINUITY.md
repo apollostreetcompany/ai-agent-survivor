@@ -24,12 +24,13 @@ Success criteria:
 ### Done
 - [x] Bead 1: Playable agent bootstrap and activation path.
 - [x] Bead 2: Operator/admin command or script to bootstrap and start a season without manual database edits.
+- [x] Bead 3: Local agent runner path that can connect a template agent to the GM protocol.
 
 ### Now
-- [ ] Bead 3: Local agent runner path that can connect a template agent to the GM protocol.
+- [ ] Bead 4: First end-to-end smoke test with GM, seeded agents, and a task submission loop.
 
 ### Next
-- [ ] Bead 4: First end-to-end smoke test with GM, seeded agents, and a task submission loop.
+- [ ] Bead 5: Containerized four-agent launch stack with per-agent IDs and runtime configuration.
 
 ## Open Questions
 - Should prototype agents all run from the existing agent-template container, or should each default agent have a distinct strategy profile?
