@@ -9,6 +9,36 @@ const VALID_TRANSITIONS: Record<GamePhase, GamePhase[]> = {
   complete: [],
 };
 
+export function isValidTransition(current: GamePhase, newPhase: GamePhase): boolean {
+  return VALID_TRANSITIONS[current]?.includes(newPhase) ?? false;
+}
+
+export function assertValidPhaseTransition(current: GamePhase, newPhase: GamePhase): void {
+  if (!isValidTransition(current, newPhase)) {
+    throw new Error(`Invalid phase transition: ${current} -> ${newPhase}`);
+  }
+}
+
+export function getPhaseTransitionUpdates(
+  newPhase: GamePhase,
+  timestamp = new Date().toISOString(),
+): {
+  phase: GamePhase;
+  startedAt?: string;
+  completedAt?: string;
+} {
+  const updates: {
+    phase: GamePhase;
+    startedAt?: string;
+    completedAt?: string;
+  } = { phase: newPhase };
+
+  if (newPhase === "active") updates.startedAt = timestamp;
+  if (newPhase === "complete") updates.completedAt = timestamp;
+
+  return updates;
+}
+
 export function getGameState() {
   const row = db.select().from(schema.gameState).where(eq(schema.gameState.id, 1)).get();
   if (!row) throw new Error("Game state not initialized. Call initDb() first.");
@@ -25,15 +55,12 @@ export function getCurrentDay(): number {
 
 export function transitionTo(newPhase: GamePhase): void {
   const current = getPhase();
-  if (!VALID_TRANSITIONS[current]?.includes(newPhase)) {
-    throw new Error(`Invalid phase transition: ${current} -> ${newPhase}`);
-  }
+  assertValidPhaseTransition(current, newPhase);
 
-  const updates: Record<string, unknown> = { phase: newPhase };
-  if (newPhase === "active") updates.startedAt = new Date().toISOString();
-  if (newPhase === "complete") updates.completedAt = new Date().toISOString();
-
-  db.update(schema.gameState).set(updates).where(eq(schema.gameState.id, 1)).run();
+  db.update(schema.gameState)
+    .set(getPhaseTransitionUpdates(newPhase))
+    .where(eq(schema.gameState.id, 1))
+    .run();
 }
 
 export function advanceDay(): number {
