@@ -30,7 +30,7 @@ body {
     radial-gradient(circle at top left, rgba(207, 95, 42, 0.18), transparent 30%),
     radial-gradient(circle at bottom right, rgba(29, 95, 115, 0.14), transparent 28%),
     linear-gradient(180deg, #f8f0df 0%, #f2e5ca 55%, #ecdab8 100%);
-  font-family: "Sora", sans-serif;
+  font-family: "Archivo", sans-serif;
 }
 
 body::before {
@@ -81,7 +81,7 @@ body::before {
 }
 
 .brand {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "JetBrains Mono", monospace;
   font-size: 0.95rem;
   text-transform: uppercase;
   letter-spacing: 0.14em;
@@ -135,7 +135,7 @@ body::before {
 .eyebrow,
 .signal-label,
 .timeline-day {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "JetBrains Mono", monospace;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-size: 0.78rem;
@@ -149,14 +149,15 @@ body::before {
 h1,
 h2,
 h3 {
-  font-family: "Bricolage Grotesque", sans-serif;
+  font-family: "Archivo", sans-serif;
   line-height: 0.95;
   margin: 0;
 }
 
 h1 {
   font-size: clamp(3.2rem, 10vw, 7.6rem);
-  letter-spacing: -0.06em;
+  font-weight: 900;
+  letter-spacing: -0.045em;
   max-width: 10ch;
 }
 
@@ -253,7 +254,7 @@ h1 span {
 .terminal-card pre {
   margin: 10px 0 0;
   overflow-x: auto;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "JetBrains Mono", monospace;
   line-height: 1.7;
   font-size: 0.9rem;
 }
@@ -273,7 +274,8 @@ h1 span {
 
 .section h2 {
   font-size: clamp(2rem, 5vw, 4rem);
-  letter-spacing: -0.05em;
+  font-weight: 800;
+  letter-spacing: -0.035em;
   max-width: 13ch;
 }
 
@@ -314,7 +316,8 @@ h1 span {
 .status-card h3 {
   font-size: 1.45rem;
   margin: 10px 0 12px;
-  letter-spacing: -0.04em;
+  font-weight: 800;
+  letter-spacing: -0.025em;
 }
 
 .systems-grid {
@@ -378,7 +381,7 @@ h1 span {
 }
 
 .footer-links a {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "JetBrains Mono", monospace;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.82rem;
