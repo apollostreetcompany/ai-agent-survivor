@@ -2,6 +2,7 @@ import { type Message } from "discord.js";
 import { parseMessage, CHANNELS, type AgentMessage } from "@survivor/shared";
 import { getChannel } from "../client.js";
 import { handleAgentProtocolMessage } from "./agent-protocol-handler.js";
+import { handleGmAdminCommand } from "./gm-admin-command-handler.js";
 
 export type MessageCallback = (msg: AgentMessage, raw: Message) => Promise<void>;
 const callbacks: MessageCallback[] = [];
@@ -15,6 +16,16 @@ export function onAgentMessage(cb: MessageCallback): void {
 export async function handleMessage(message: Message): Promise<void> {
   // Ignore messages from the GM bot itself
   if (message.author.id === message.client.user?.id) return;
+
+  const gmAdminChannel = getChannel(CHANNELS.GM_ADMIN);
+  if (gmAdminChannel && message.channelId === gmAdminChannel.id) {
+    await handleGmAdminCommand(message.content, {
+      reply: async (line) => {
+        await message.reply(line);
+      },
+    });
+    return;
+  }
 
   // Only process messages in game channels
   const arenaChannel = getChannel(CHANNELS.ARENA);
