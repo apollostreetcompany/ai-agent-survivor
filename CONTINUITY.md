@@ -28,12 +28,13 @@ Success criteria:
 - [x] Bead 4: First end-to-end smoke test with GM, seeded agents, and a task submission loop.
 - [x] Bead 5: Containerized four-agent launch stack with per-agent IDs and runtime configuration.
 - [x] Bead 6: Discord GM command surface for season setup and smoke checks.
+- [x] Bead 7: Runtime readiness docs/checklist for Discord tokens, LLM keys, and launch commands.
 
 ### Now
-- [ ] Bead 7: Runtime readiness docs/checklist for Discord tokens, LLM keys, and launch commands.
+- [ ] Bead 8: Live Discord dry run with real bot credentials and four launched agent processes.
 
 ### Next
-- [ ] Bead 8: Live Discord dry run with real bot credentials and four launched agent processes.
+- [ ] Bead 9: Consolidate default roster IDs into shared package to remove local duplication.
 
 ## Open Questions
 - Should prototype agents all run from the existing agent-template container, or should each default agent have a distinct strategy profile?

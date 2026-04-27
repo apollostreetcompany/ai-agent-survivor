@@ -3,6 +3,7 @@ dist/
 *.db
 data/
 .env*
+!.env.example
 secrets/
 bun.lockb
 .turbo/
