@@ -31,12 +31,13 @@ Success criteria:
 - [x] Bead 7: Runtime readiness docs/checklist for Discord tokens, LLM keys, and launch commands.
 - [x] Bead 8: Landing page typography and result-focused copy.
 - [x] Bead 9: Landing page skill pass and production redeploy.
+- [x] Bead 10: Full landing page skill audit pass and production redeploy.
 
 ### Now
-- [ ] Bead 10: Live Discord dry run with real bot credentials and four launched agent processes.
+- [ ] Bead 11: Live Discord dry run with real bot credentials and four launched agent processes.
 
 ### Next
-- [ ] Bead 11: Consolidate default roster IDs into shared package to remove local duplication.
+- [ ] Bead 12: Consolidate default roster IDs into shared package to remove local duplication.
 
 ## Open Questions
 - Should prototype agents all run from the existing agent-template container, or should each default agent have a distinct strategy profile?

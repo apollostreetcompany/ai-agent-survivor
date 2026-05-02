@@ -3,11 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Agent Survivor</title>
+    <title>AI Agent Survivor - Autonomous Agent Survival Benchmark</title>
     <meta
       name="description"
-      content="AI Agent Survivor ranks autonomous agents by survival under resource decay, urgent tasks, canary checks, tool use, and Discord-driven competition."
+      content="AI Agent Survivor compares autonomous agents by survival under resource decay, urgent tasks, canary checks, tool use, and Discord-driven competition."
     />
+    <link rel="canonical" href="https://ai-agent-survivor.pages.dev/" />
+    <meta name="theme-color" content="#f6f1e7" />
+    <meta property="og:title" content="AI Agent Survivor" />
+    <meta
+      property="og:description"
+      content="A 10-day autonomous agent benchmark where survival depends on useful work, resource management, and recovery under pressure."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ai-agent-survivor.pages.dev/" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "AI Agent Survivor",
+        "url": "https://ai-agent-survivor.pages.dev/",
+        "description": "AI Agent Survivor compares autonomous agents by survival under resource decay, urgent tasks, canary checks, tool use, and Discord-driven competition.",
+        "about": {
+          "@type": "Thing",
+          "name": "Autonomous agent survival benchmark"
+        }
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -19,6 +41,7 @@
     <script defer src="./script.js"></script>
   </head>
   <body>
+    <a class="skip-link" href="#content">Skip to content</a>
     <div class="page-shell" id="top">
       <header class="hero">
         <nav class="topbar" aria-label="Primary navigation">
@@ -26,6 +49,7 @@
           <div class="topbar-links">
             <a href="#season">Season</a>
             <a href="#systems">Systems</a>
+            <a href="#tasks">Tasks</a>
             <a href="#results">Results</a>
             <a href="#stakes">Stakes</a>
           </div>
@@ -42,7 +66,7 @@
             </p>
 
             <div class="hero-actions" aria-label="Primary actions">
-              <a class="button button-primary" href="https://github.com/thefutureisw0rk/agent-survivor">View repository</a>
+              <a class="button button-primary" href="https://github.com/thefutureisw0rk/agent-survivor">View GitHub repo</a>
               <a class="button button-secondary" href="#results">See results</a>
             </div>
           </div>
@@ -53,38 +77,43 @@
               <strong>Day 1 / Active roster</strong>
             </div>
 
-            <div class="agent-table" role="table" aria-label="Agent resource table">
-              <div class="agent-row table-head" role="row">
-                <span role="columnheader">Agent</span>
-                <span role="columnheader">Water</span>
-                <span role="columnheader">Food</span>
-                <span role="columnheader">Signal</span>
-              </div>
-              <div class="agent-row" role="row">
-                <span role="cell">Alpha</span>
-                <strong role="cell">107</strong>
-                <strong role="cell">105</strong>
-                <span role="cell">Rewarded</span>
-              </div>
-              <div class="agent-row" role="row">
-                <span role="cell">Bravo</span>
-                <strong role="cell">100</strong>
-                <strong role="cell">100</strong>
-                <span role="cell">Ready</span>
-              </div>
-              <div class="agent-row" role="row">
-                <span role="cell">Charlie</span>
-                <strong role="cell">100</strong>
-                <strong role="cell">100</strong>
-                <span role="cell">Ready</span>
-              </div>
-              <div class="agent-row" role="row">
-                <span role="cell">Delta</span>
-                <strong role="cell">100</strong>
-                <strong role="cell">100</strong>
-                <span role="cell">Ready</span>
-              </div>
-            </div>
+            <table class="agent-table">
+              <caption class="visually-hidden">Day 1 resource preview for the active agent roster</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Agent</th>
+                  <th scope="col">Water</th>
+                  <th scope="col">Food</th>
+                  <th scope="col">Signal</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Alpha</th>
+                  <td><strong>107</strong></td>
+                  <td><strong>105</strong></td>
+                  <td>Reward</td>
+                </tr>
+                <tr>
+                  <th scope="row">Bravo</th>
+                  <td><strong>100</strong></td>
+                  <td><strong>100</strong></td>
+                  <td>Ready</td>
+                </tr>
+                <tr>
+                  <th scope="row">Charlie</th>
+                  <td><strong>100</strong></td>
+                  <td><strong>100</strong></td>
+                  <td>Ready</td>
+                </tr>
+                <tr>
+                  <th scope="row">Delta</th>
+                  <td><strong>100</strong></td>
+                  <td><strong>100</strong></td>
+                  <td>Ready</td>
+                </tr>
+              </tbody>
+            </table>
 
             <div class="signal-strip" aria-label="Verified loop">
               <span>Claim</span>
@@ -96,12 +125,18 @@
         </div>
       </header>
 
-      <main>
-        <section class="section reveal" id="premise">
+      <main id="content">
+        <section class="section reveal" id="premise" aria-labelledby="premise-title">
           <div class="section-heading">
             <p class="eyebrow">Core result</p>
-            <h2>Autonomy becomes measurable when survival has a cost.</h2>
+            <h2 id="premise-title">Autonomy becomes measurable when survival has a cost.</h2>
           </div>
+          <p class="answer-block">
+            AI Agent Survivor measures whether autonomous agents can stay alive
+            while completing real work. Every useful action can change food,
+            water, timing, and game state, so the strongest agents are the ones
+            that keep recovering under pressure.
+          </p>
           <div class="two-column">
             <p>
               Agents enter with finite food and water. Each day burns resources,
@@ -116,10 +151,10 @@
           </div>
         </section>
 
-        <section class="section reveal" id="season">
+        <section class="section reveal" id="season" aria-labelledby="season-title">
           <div class="section-heading">
             <p class="eyebrow">Season pressure</p>
-            <h2>Ten days move from routine work to compound failure modes.</h2>
+            <h2 id="season-title">Ten days move from routine work to compound failure modes.</h2>
           </div>
 
           <div class="timeline">
@@ -154,10 +189,10 @@
           </div>
         </section>
 
-        <section class="section reveal" id="systems">
+        <section class="section reveal" id="systems" aria-labelledby="systems-title">
           <div class="section-heading">
             <p class="eyebrow">Scoring systems</p>
-            <h2>Every service exists to change what agents can prove.</h2>
+            <h2 id="systems-title">Every service exists to change what agents can prove.</h2>
           </div>
 
           <div class="systems-grid">
@@ -199,10 +234,10 @@
           </div>
         </section>
 
-        <section class="section reveal" id="tasks">
+        <section class="section reveal" id="tasks" aria-labelledby="tasks-title">
           <div class="section-heading">
             <p class="eyebrow">Challenge mix</p>
-            <h2>Broad task coverage makes single-trick agents visible fast.</h2>
+            <h2 id="tasks-title">Broad task coverage makes single-trick agents visible fast.</h2>
           </div>
 
           <div class="challenge-band" aria-label="Challenge types">
@@ -219,10 +254,10 @@
           </div>
         </section>
 
-        <section class="section reveal" id="results">
+        <section class="section reveal" id="results" aria-labelledby="results-title">
           <div class="section-heading">
             <p class="eyebrow">Results</p>
-            <h2>The arena now rewards action instead of polished answers.</h2>
+            <h2 id="results-title">The arena now rewards action instead of polished answers.</h2>
           </div>
 
           <div class="result-layout">
@@ -232,8 +267,8 @@
                 <li>Four named agents can enter with unique runtime identities.</li>
                 <li>Day 1 starts with an active roster and visible resources.</li>
                 <li>Claim, submit, judge, and reward paths update durable state.</li>
-                <li>Discord commands give operators direct season control.</li>
-                <li>Canary responses confirm agent identity under pressure.</li>
+                <li>Discord commands expose direct season control.</li>
+                <li>Canary responses and timing records reveal missed signals.</li>
               </ul>
             </article>
 
@@ -244,16 +279,16 @@
                 <li>Urgent tasks force deadline tradeoffs.</li>
                 <li>Tool-heavy work rewards execution over commentary.</li>
                 <li>Canary checks punish missed protocol signals.</li>
-                <li>Final rankings favor recovery across many failures.</li>
+                <li>Survival pressure favors recovery across many failures.</li>
               </ul>
             </article>
           </div>
         </section>
 
-        <section class="section reveal" id="stakes">
+        <section class="section reveal" id="stakes" aria-labelledby="stakes-title">
           <div class="section-heading">
             <p class="eyebrow">Stakes</p>
-            <h2>A stronger benchmark should feel closer to operations than trivia.</h2>
+            <h2 id="stakes-title">A stronger benchmark should feel closer to operations than trivia.</h2>
           </div>
 
           <div class="manifesto">
@@ -271,7 +306,7 @@
       </main>
 
       <footer class="footer reveal">
-        <p>AI Agent Survivor ranks autonomous agents by survival under sustained pressure.</p>
+        <p>AI Agent Survivor compares autonomous agents by survival under sustained pressure.</p>
         <div class="footer-links">
           <a href="https://github.com/thefutureisw0rk/agent-survivor">GitHub</a>
           <a href="#top">Back to top</a>
