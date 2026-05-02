@@ -9,6 +9,20 @@ import type {
 } from "@survivor/shared";
 import { applyDelta } from "./resources.js";
 import { getCurrentDay } from "./game-state.js";
+import { updateTaskFeed } from "../environment/feed-updater.js";
+import { recordRuntimeEvent } from "../ops/runtime.js";
+
+function syncActiveTaskFeed(): void {
+  try {
+    updateTaskFeed(getActiveTasks());
+  } catch (err) {
+    recordRuntimeEvent({
+      level: "error",
+      event: "task_feed_sync_failed",
+      details: { error: err instanceof Error ? err.message : String(err) },
+    });
+  }
+}
 
 /** Create a new task in the database */
 export function createTask(def: TaskDefinition): void {
@@ -36,6 +50,7 @@ export function createTask(def: TaskDefinition): void {
         : undefined,
     })
     .run();
+  syncActiveTaskFeed();
 }
 
 /** Attempt to claim a task for an agent */
@@ -75,6 +90,7 @@ export function claimTask(
       .where(eq(schema.tasks.id, taskId))
       .run();
 
+    syncActiveTaskFeed();
     return { success: true };
   }
 
@@ -169,6 +185,7 @@ export function submitTask(
       .run();
   }
 
+  syncActiveTaskFeed();
   return { rewarded: valid, reward };
 }
 
@@ -190,6 +207,7 @@ export function expireOverdueTasks(): TaskId[] {
       .run();
   }
 
+  if (overdue.length > 0) syncActiveTaskFeed();
   return overdue.map((t) => t.id);
 }
 

@@ -3,6 +3,7 @@ import { parseMessage, CHANNELS, type AgentMessage } from "@survivor/shared";
 import { getChannel } from "../client.js";
 import { handleAgentProtocolMessage } from "./agent-protocol-handler.js";
 import { handleGmAdminCommand } from "./gm-admin-command-handler.js";
+import { recordDiscordAudit } from "../../ops/runtime.js";
 
 export type MessageCallback = (msg: AgentMessage, raw: Message) => Promise<void>;
 const callbacks: MessageCallback[] = [];
@@ -38,6 +39,15 @@ export async function handleMessage(message: Message): Promise<void> {
   // Only handle agent messages
   if (!("agentId" in parsed)) return;
   const agentMsg = parsed as AgentMessage;
+
+  recordDiscordAudit({
+    channelName: CHANNELS.ARENA,
+    direction: "inbound",
+    messageTag: agentMsg.tag,
+    agentId: agentMsg.agentId,
+    status: "received",
+    contentPreview: message.content,
+  });
 
   // Record timing
   const receivedAt = Date.now();

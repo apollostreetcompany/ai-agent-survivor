@@ -38,6 +38,12 @@ const optionalEnvVars = [
   "AGENT_CHARLIE_MAIL_PASS",
   "AGENT_DELTA_MAIL_USER",
   "AGENT_DELTA_MAIL_PASS",
+  "BENCHMARK_RUNTIME_DIR",
+  "SURVIVOR_RUN_ID",
+  "GAME_DATA_PORT",
+  "OPENCLAW_DISCORD_TARGET",
+  "MAX_LOG_AGE_SECONDS",
+  "MAX_HEALTH_AGE_SECONDS",
 ];
 
 const requiredCommands = [
@@ -47,11 +53,18 @@ const requiredCommands = [
   "cd packages/infra",
   "cp .env.example .env",
   "docker compose --env-file .env up --build",
+  "bun run benchmark:start",
+  "bun run benchmark:status",
+  "bun run benchmark:stop",
+  "bun run benchmark:watchdog",
   "!season help",
   "!season status",
   "!season bootstrap",
   "!season start",
   "!season setup",
+  "!season health",
+  "!season ops",
+  "!season adjudicate",
   "#gm-admin",
 ];
 

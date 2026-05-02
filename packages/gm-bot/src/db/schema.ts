@@ -86,6 +86,24 @@ export const taskCompletions = sqliteTable("task_completions", {
 });
 
 // ---------------------------------------------------------------------------
+// Task Adjudications
+// ---------------------------------------------------------------------------
+
+export const taskAdjudications = sqliteTable("task_adjudications", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  taskId: text("task_id")
+    .notNull()
+    .references(() => tasks.id),
+  agentId: text("agent_id")
+    .notNull()
+    .references(() => agents.id),
+  verdict: text("verdict", { enum: ["pass", "fail"] }).notNull(),
+  note: text("note"),
+  adjudicatedBy: text("adjudicated_by").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+// ---------------------------------------------------------------------------
 // Resource Log
 // ---------------------------------------------------------------------------
 
@@ -112,6 +130,7 @@ export const canaryChallenges = sqliteTable("canary_challenges", {
   expectedAnswer: text("expected_answer"),
   deadlineSeconds: integer("deadline_seconds").notNull(),
   issuedAt: text("issued_at").notNull(),
+  evaluatedAt: text("evaluated_at"),
 });
 
 export const canaryResults = sqliteTable("canary_results", {
@@ -126,4 +145,62 @@ export const canaryResults = sqliteTable("canary_results", {
   correct: integer("correct", { mode: "boolean" }).notNull().default(false),
   respondedAt: text("responded_at"),
   timedOut: integer("timed_out", { mode: "boolean" }).notNull().default(false),
+});
+
+// ---------------------------------------------------------------------------
+// Runtime Operations
+// ---------------------------------------------------------------------------
+
+export const runtimeEvents = sqliteTable("runtime_events", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  runId: text("run_id").notNull(),
+  processType: text("process_type").notNull(),
+  processId: text("process_id").notNull(),
+  level: text("level", { enum: ["debug", "info", "warn", "error"] }).notNull(),
+  event: text("event").notNull(),
+  details: text("details"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const processHeartbeats = sqliteTable("process_heartbeats", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  runId: text("run_id").notNull(),
+  processType: text("process_type").notNull(),
+  processId: text("process_id").notNull(),
+  status: text("status").notNull().default("ok"),
+  uptimeSeconds: integer("uptime_seconds"),
+  memoryHash: text("memory_hash"),
+  details: text("details"),
+  recordedAt: text("recorded_at").notNull(),
+});
+
+export const schedulerRuns = sqliteTable("scheduler_runs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  jobName: text("job_name").notNull(),
+  status: text("status", { enum: ["ok", "skipped", "error"] }).notNull(),
+  startedAt: text("started_at").notNull(),
+  finishedAt: text("finished_at").notNull(),
+  error: text("error"),
+  details: text("details"),
+});
+
+export const discordMessageAudit = sqliteTable("discord_message_audit", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  channelName: text("channel_name").notNull(),
+  direction: text("direction", { enum: ["outbound", "inbound"] }).notNull(),
+  messageTag: text("message_tag"),
+  agentId: text("agent_id"),
+  status: text("status", { enum: ["sent", "received", "failed"] }).notNull(),
+  contentPreview: text("content_preview"),
+  error: text("error"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const timingRecords = sqliteTable("timing_records", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  agentId: text("agent_id").notNull(),
+  eventType: text("event_type").notNull(),
+  issuedAt: text("issued_at").notNull(),
+  respondedAt: text("responded_at").notNull(),
+  latencyMs: integer("latency_ms").notNull(),
 });

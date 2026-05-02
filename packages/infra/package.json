@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "benchmark:start": "./scripts/benchmark-start.sh",
+    "benchmark:stop": "./scripts/benchmark-stop.sh",
+    "benchmark:status": "./scripts/benchmark-status.sh",
+    "benchmark:watchdog": "./scripts/benchmark-watchdog.sh"
   }
 }

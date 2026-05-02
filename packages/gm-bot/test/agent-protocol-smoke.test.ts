@@ -8,6 +8,8 @@ import type { AgentMessage, TaskDefinition } from "@survivor/shared";
 
 const tempDir = mkdtempSync(join(tmpdir(), "survivor-agent-protocol-smoke-"));
 process.env.DB_PATH = join(tempDir, "survivor-test.db");
+process.env.GAME_DATA_DIR = join(tempDir, "game-data");
+process.env.SURVIVOR_LOG_DIR = join(tempDir, "logs");
 
 const { encodeAgentMessage, parseMessage, STARTING_RESOURCES } = await import("@survivor/shared");
 const { db, initDb, schema } = await import("../src/db/index.js");
@@ -22,6 +24,12 @@ const taskId = "smoke-claim-submit";
 function resetDb() {
   initDb();
 
+  db.delete(schema.taskAdjudications).run();
+  db.delete(schema.runtimeEvents).run();
+  db.delete(schema.processHeartbeats).run();
+  db.delete(schema.schedulerRuns).run();
+  db.delete(schema.discordMessageAudit).run();
+  db.delete(schema.timingRecords).run();
   db.delete(schema.resourceLog).run();
   db.delete(schema.taskCompletions).run();
   db.delete(schema.tasks).run();

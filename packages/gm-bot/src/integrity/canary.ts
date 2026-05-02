@@ -104,7 +104,7 @@ export async function issueCanary(): Promise<string> {
 }
 
 /** Evaluate canary responses after deadline */
-async function evaluateCanary(canaryId: string): Promise<void> {
+export async function evaluateCanary(canaryId: string): Promise<void> {
   const challenge = db
     .select()
     .from(schema.canaryChallenges)
@@ -112,6 +112,7 @@ async function evaluateCanary(canaryId: string): Promise<void> {
     .get();
 
   if (!challenge) return;
+  if (challenge.evaluatedAt) return;
 
   const activeAgents = getAllActiveResources();
   const results = db
@@ -146,6 +147,10 @@ async function evaluateCanary(canaryId: string): Promise<void> {
   }
 
   await sendText(CHANNELS.INTEGRITY_LOG, lines.join("\n"));
+  db.update(schema.canaryChallenges)
+    .set({ evaluatedAt: new Date().toISOString() })
+    .where(eq(schema.canaryChallenges.id, canaryId))
+    .run();
 
   // Check for agents that have failed too many canaries
   for (const agent of activeAgents) {
@@ -169,6 +174,25 @@ async function evaluateCanary(canaryId: string): Promise<void> {
       // Apply penalty
       applyDelta(agent.id, CANARY_FAILURE_PENALTY, "canary_penalty", "Repeated canary failures");
     }
+  }
+}
+
+/** Re-arm or immediately evaluate canaries that were pending across a GM restart. */
+export function recoverPendingCanaryEvaluations(): void {
+  const pending = db
+    .select()
+    .from(schema.canaryChallenges)
+    .all()
+    .filter((challenge) => !challenge.evaluatedAt);
+
+  for (const challenge of pending) {
+    const deadlineMs = new Date(challenge.issuedAt).getTime() + challenge.deadlineSeconds * 1000 + 2000;
+    const delayMs = Math.max(0, deadlineMs - Date.now());
+    setTimeout(() => {
+      evaluateCanary(challenge.id).catch((err) => {
+        console.error(`Canary recovery evaluation failed for ${challenge.id}:`, err);
+      });
+    }, delayMs);
   }
 }
 

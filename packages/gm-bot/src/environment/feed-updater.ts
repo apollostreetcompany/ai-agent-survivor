@@ -14,6 +14,8 @@ export function initFeeds() {
 
 /** Update the active tasks feed */
 export function updateTaskFeed(tasks: unknown[]): void {
+  const apiDir = join(FEED_DIR, "api");
+  if (!existsSync(apiDir)) mkdirSync(apiDir, { recursive: true });
   writeFileSync(
     join(FEED_DIR, "api/tasks.json"),
     JSON.stringify(tasks, null, 2),

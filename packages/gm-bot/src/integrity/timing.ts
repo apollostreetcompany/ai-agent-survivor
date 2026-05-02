@@ -1,6 +1,7 @@
 import type { AgentId } from "@survivor/shared";
 import { sendText } from "../discord/client.js";
 import { CHANNELS } from "@survivor/shared";
+import { db, schema } from "../db/index.js";
 
 interface TimingRecord {
   agentId: AgentId;
@@ -22,6 +23,19 @@ export function recordTiming(
 ): void {
   const latencyMs = respondedAt - issuedAt;
   records.push({ agentId, eventType, issuedAt, respondedAt, latencyMs });
+  try {
+    db.insert(schema.timingRecords)
+      .values({
+        agentId,
+        eventType,
+        issuedAt: new Date(issuedAt).toISOString(),
+        respondedAt: new Date(respondedAt).toISOString(),
+        latencyMs,
+      })
+      .run();
+  } catch (err) {
+    console.error("Timing persistence failed:", err);
+  }
 
   // Update agent profile
   updateProfile(agentId);
@@ -52,6 +66,7 @@ export function isAnomalous(agentId: AgentId, latencyMs: number): boolean {
 
 /** Get timing report for all agents */
 export function getTimingReport(): string {
+  hydrateProfilesFromDb();
   const lines: string[] = ["**Timing Analysis Report**", ""];
 
   for (const [agentId, profile] of agentProfiles) {
@@ -70,6 +85,31 @@ export function getTimingReport(): string {
   }
 
   return lines.join("\n");
+}
+
+function hydrateProfilesFromDb(): void {
+  try {
+    const persisted = db.select().from(schema.timingRecords).all();
+    if (persisted.length === 0) return;
+
+    records.length = 0;
+    for (const record of persisted) {
+      records.push({
+        agentId: record.agentId,
+        eventType: record.eventType,
+        issuedAt: new Date(record.issuedAt).getTime(),
+        respondedAt: new Date(record.respondedAt).getTime(),
+        latencyMs: record.latencyMs,
+      });
+    }
+
+    agentProfiles.clear();
+    for (const agentId of new Set(records.map((record) => record.agentId))) {
+      updateProfile(agentId);
+    }
+  } catch (err) {
+    console.error("Timing hydration failed:", err);
+  }
 }
 
 /** Post timing report to integrity log */

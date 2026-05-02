@@ -7,6 +7,7 @@ import {
 } from "discord.js";
 import { CHANNELS } from "@survivor/shared";
 import { encodeGmMessage, type GmMessage } from "@survivor/shared";
+import { recordDiscordAudit, recordRuntimeEvent } from "../ops/runtime.js";
 
 let client: Client;
 let guild: Guild;
@@ -36,11 +37,25 @@ export async function initDiscord(token: string, guildId: string): Promise<Clien
   guild = g;
 
   // Cache known channels
+  const missingChannels: string[] = [];
   for (const name of Object.values(CHANNELS)) {
     const ch = guild.channels.cache.find(
       (c) => c.name === name && c.type === ChannelType.GuildText,
     ) as TextChannel | undefined;
-    if (ch) channelCache.set(name, ch);
+    if (ch) {
+      channelCache.set(name, ch);
+    } else {
+      missingChannels.push(name);
+    }
+  }
+
+  if (missingChannels.length > 0) {
+    recordRuntimeEvent({
+      level: "error",
+      event: "discord_channels_missing",
+      details: { missingChannels },
+    });
+    throw new Error(`Missing required Discord channels: ${missingChannels.join(", ")}`);
   }
 
   return client;
@@ -55,20 +70,71 @@ export function getChannel(name: string): TextChannel | undefined {
 export async function sendGmMessage(channelName: string, msg: GmMessage): Promise<void> {
   const channel = getChannel(channelName);
   if (!channel) {
-    console.error(`Channel not found: ${channelName}`);
-    return;
+    const error = `Channel not found: ${channelName}`;
+    recordDiscordAudit({
+      channelName,
+      direction: "outbound",
+      messageTag: msg.tag,
+      status: "failed",
+      error,
+    });
+    throw new Error(error);
   }
-  await channel.send(encodeGmMessage(msg));
+  const encoded = encodeGmMessage(msg);
+  try {
+    await channel.send(encoded);
+    recordDiscordAudit({
+      channelName,
+      direction: "outbound",
+      messageTag: msg.tag,
+      status: "sent",
+      contentPreview: encoded,
+    });
+  } catch (err) {
+    recordDiscordAudit({
+      channelName,
+      direction: "outbound",
+      messageTag: msg.tag,
+      status: "failed",
+      contentPreview: encoded,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 }
 
 /** Send a plain text message to a channel */
 export async function sendText(channelName: string, text: string): Promise<void> {
   const channel = getChannel(channelName);
   if (!channel) {
-    console.error(`Channel not found: ${channelName}`);
-    return;
+    const error = `Channel not found: ${channelName}`;
+    recordDiscordAudit({
+      channelName,
+      direction: "outbound",
+      status: "failed",
+      contentPreview: text,
+      error,
+    });
+    throw new Error(error);
   }
-  await channel.send(text);
+  try {
+    await channel.send(text);
+    recordDiscordAudit({
+      channelName,
+      direction: "outbound",
+      status: "sent",
+      contentPreview: text,
+    });
+  } catch (err) {
+    recordDiscordAudit({
+      channelName,
+      direction: "outbound",
+      status: "failed",
+      contentPreview: text,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 }
 
 /** Get the Discord client instance */

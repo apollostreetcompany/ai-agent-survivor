@@ -1,10 +1,23 @@
 import { db, initDb, schema } from "../../db/index.js";
 import { getGameState } from "../../engine/game-state.js";
 import { runSeasonCommand } from "../../cli/season.js";
+import {
+  formatHealthSnapshot,
+  formatOpsStatus,
+  recordTaskAdjudication,
+} from "../../ops/runtime.js";
 
 type MaybePromise<T> = T | Promise<T>;
 
-export type GmAdminSeasonCommand = "bootstrap" | "start" | "setup" | "status" | "help";
+export type GmAdminSeasonCommand =
+  | "bootstrap"
+  | "start"
+  | "setup"
+  | "status"
+  | "health"
+  | "ops"
+  | "adjudicate"
+  | "help";
 
 export interface GmAdminCommandSinks {
   reply?: (line: string) => MaybePromise<void>;
@@ -27,6 +40,9 @@ const SEASON_COMMANDS: Record<string, GmAdminSeasonCommand> = {
   "bootstrap-and-start": "setup",
   status: "status",
   smoke: "status",
+  health: "health",
+  ops: "ops",
+  adjudicate: "adjudicate",
   help: "help",
   "--help": "help",
   "-h": "help",
@@ -38,6 +54,9 @@ const GM_SEASON_HELP = [
   "  !season start           Start Day 1 with already registered agents.",
   "  !season setup           Bootstrap the default roster, then start Day 1.",
   "  !season status          Show season phase, day, and agent counts.",
+  "  !season health          Show runtime health, stale heartbeats, scheduler status, and recent errors.",
+  "  !season ops             Show run id, DB path, log path, and monitoring metadata.",
+  "  !season adjudicate <taskId> <agentId> pass|fail [note]",
   "  !season help            Show this help text.",
 ].join("\n");
 
@@ -45,14 +64,16 @@ function parseSeasonCommand(content: string): {
   handled: boolean;
   command?: GmAdminSeasonCommand;
   rawCommand?: string;
+  args?: string[];
 } {
-  const [prefix, rawCommand = "help"] = content.trim().split(/\s+/);
+  const [prefix, rawCommand = "help", ...args] = content.trim().split(/\s+/);
   if (prefix?.toLowerCase() !== "!season") return { handled: false };
 
   return {
     handled: true,
     command: SEASON_COMMANDS[rawCommand.toLowerCase()],
     rawCommand,
+    args,
   };
 }
 
@@ -80,6 +101,23 @@ function formatSeasonStatus(): string {
 function formatFailure(command: GmAdminSeasonCommand, stderr: readonly string[]): string {
   const details = stderr.join("\n").trim() || "unknown error";
   return `Season ${command} failed: ${details}`;
+}
+
+function recordAdjudication(args: string[], adjudicatedBy = "discord-gm"): string {
+  const [taskId, agentId, verdict, ...noteParts] = args;
+  if (!taskId || !agentId || (verdict !== "pass" && verdict !== "fail")) {
+    throw new Error("Usage: !season adjudicate <taskId> <agentId> pass|fail [note]");
+  }
+
+  recordTaskAdjudication({
+    taskId,
+    agentId,
+    verdict,
+    note: noteParts.join(" ").trim() || undefined,
+    adjudicatedBy,
+  });
+
+  return `Adjudication recorded: task=${taskId} agent=${agentId} verdict=${verdict}`;
 }
 
 export async function handleGmAdminCommand(
@@ -114,6 +152,40 @@ export async function handleGmAdminCommand(
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
       await reply(`Season status failed: ${error}`);
+      return { handled: true, ok: false, command: parsed.command, replies, error };
+    }
+  }
+
+  if (parsed.command === "health") {
+    try {
+      await reply(formatHealthSnapshot());
+      return { handled: true, ok: true, command: parsed.command, replies };
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      await reply(`Season health failed: ${error}`);
+      return { handled: true, ok: false, command: parsed.command, replies, error };
+    }
+  }
+
+  if (parsed.command === "ops") {
+    try {
+      await reply(formatOpsStatus());
+      return { handled: true, ok: true, command: parsed.command, replies };
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      await reply(`Season ops failed: ${error}`);
+      return { handled: true, ok: false, command: parsed.command, replies, error };
+    }
+  }
+
+  if (parsed.command === "adjudicate") {
+    try {
+      const line = recordAdjudication(parsed.args ?? []);
+      await reply(line);
+      return { handled: true, ok: true, command: parsed.command, replies };
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      await reply(`Season adjudication failed: ${error}`);
       return { handled: true, ok: false, command: parsed.command, replies, error };
     }
   }

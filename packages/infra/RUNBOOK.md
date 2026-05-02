@@ -21,6 +21,7 @@ Optional runtime variables:
 | Agent LLM selection | `LLM_PROVIDER`, `AGENT_ALPHA_LLM_MODEL`, `AGENT_BRAVO_LLM_MODEL`, `AGENT_CHARLIE_LLM_MODEL`, `AGENT_DELTA_LLM_MODEL` |
 | GM narration | `NARRATOR_API_KEY`, `NARRATOR_MODEL` |
 | Mail | `GM_MAIL_PASS`, `AGENT_ALPHA_MAIL_USER`, `AGENT_ALPHA_MAIL_PASS`, `AGENT_BRAVO_MAIL_USER`, `AGENT_BRAVO_MAIL_PASS`, `AGENT_CHARLIE_MAIL_USER`, `AGENT_CHARLIE_MAIL_PASS`, `AGENT_DELTA_MAIL_USER`, `AGENT_DELTA_MAIL_PASS` |
+| Local benchmark | `BENCHMARK_RUNTIME_DIR`, `SURVIVOR_RUN_ID`, `GAME_DATA_PORT`, `OPENCLAW_DISCORD_TARGET`, `MAX_LOG_AGE_SECONDS`, `MAX_HEALTH_AGE_SECONDS` |
 
 Use `.env.example` as the non-secret template:
 
@@ -87,6 +88,44 @@ docker compose --env-file .env down
 
 The stack starts one GM bot, four agent-template containers, local mail, local calendar, and an nginx game-data feed. `docker compose` commands require Docker installed; in environments without Docker, use the local non-Docker smoke path and skip compose validation.
 
+## Local Mac Runtime Supervision (10-day benchmark)
+
+Use infra scripts to run the local game-data feed, the GM, and four local agent processes under Bun workspaces:
+
+```sh
+cd packages/infra
+bun run benchmark:start
+bun run benchmark:status
+bun run benchmark:stop
+```
+
+`benchmark:start` builds the workspace, maps the runbook credentials into each local process (`GM_DISCORD_TOKEN` → GM `DISCORD_TOKEN`, per-agent Discord/LLM keys → agent `DISCORD_TOKEN`/`LLM_API_KEY`), starts a local `/tasks` and `/market-feed` server on `GAME_DATA_PORT`, and writes PID, log, heartbeat, and status files under `BENCHMARK_RUNTIME_DIR` (default: `packages/infra/.runtime/discord-benchmark`). `benchmark:status` emits JSON status suitable for OpenClaw ingestion.
+
+Run watchdog once (or from cron) to restart missing/stale processes:
+
+```sh
+cd packages/infra
+bun run benchmark:watchdog
+```
+
+Hourly cron example for local Mac runtime supervision:
+
+```cron
+0 * * * * cd /Users/future/dev/ai-agent-survivor/packages/infra && bun run benchmark:watchdog >> .runtime/discord-benchmark/watchdog.log 2>&1
+```
+
+OpenClaw hourly watchdog example:
+
+```sh
+openclaw cron add \
+  --every 1h \
+  --message "cd /Users/future/dev/ai-agent-survivor/packages/infra && bun run benchmark:watchdog" \
+  --announce \
+  --to "${OPENCLAW_DISCORD_TARGET}"
+```
+
+Use `MAX_LOG_AGE_SECONDS` and `MAX_HEALTH_AGE_SECONDS` in `.env` to tune stale detection; watchdog restarts processes if PID is missing/dead, if logs are stale, or if a process-provided heartbeat marker exists and is stale. `benchmark:watchdog --check-only` reports restart decisions without stopping or starting processes.
+
 ## Discord Admin Commands
 
 Send these in `#gm-admin`:
@@ -97,9 +136,12 @@ Send these in `#gm-admin`:
 !season bootstrap
 !season start
 !season setup
+!season health
+!season ops
+!season adjudicate <taskId> <agentId> pass|fail [note]
 ```
 
-Use `!season setup` for the normal launch path: it bootstraps the deterministic four-agent roster and starts Day 1. Use `!season status` immediately after launch to verify phase, day, and active agent counts.
+Use `!season setup` for the normal launch path: it bootstraps the deterministic four-agent roster and starts Day 1. Use `!season status` immediately after launch to verify phase, day, and active agent counts. Use `!season health` during the run to inspect stale heartbeats, scheduler runs, pending canaries, and recent errors.
 
 ## Fail Loud Expectations
 

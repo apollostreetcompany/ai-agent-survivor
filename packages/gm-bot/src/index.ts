@@ -2,14 +2,17 @@ import { initDb } from "./db/index.js";
 import { initDiscord, sendGmMessage, sendText } from "./discord/client.js";
 import { handleMessage } from "./discord/events/message-handler.js";
 import { startScheduler } from "./engine/scheduler.js";
+import { getActiveTasks } from "./engine/task-manager.js";
 import { getAllActiveResources } from "./engine/resources.js";
 import { getCurrentDay } from "./engine/game-state.js";
 import { getDifficultyForDay } from "./engine/difficulty.js";
 import { getPhase } from "./engine/game-state.js";
 import { CHANNELS } from "@survivor/shared";
 import { initEmailInjector } from "./environment/email-injector.js";
-import { initFeeds } from "./environment/feed-updater.js";
+import { initFeeds, updateTaskFeed } from "./environment/feed-updater.js";
 import { narrateMoment } from "./commentary/narrator.js";
+import { recoverPendingCanaryEvaluations } from "./integrity/canary.js";
+import { getLogDir, getRunId, recordProcessHeartbeat, recordRuntimeEvent } from "./ops/runtime.js";
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const GUILD_ID = process.env.GUILD_ID;
@@ -23,10 +26,15 @@ async function main() {
   // Initialize database
   console.log("Initializing database...");
   initDb();
+  recordRuntimeEvent({
+    event: "gm_starting",
+    details: { runId: getRunId(), logDir: getLogDir() },
+  });
 
   // Initialize environment services
   console.log("Initializing environment services...");
   initFeeds();
+  updateTaskFeed(getActiveTasks());
   try { initEmailInjector(); } catch (err) { console.warn("Email injector init failed:", err); }
 
   // Connect to Discord
@@ -38,6 +46,7 @@ async function main() {
 
   // Start scheduler
   console.log("Starting scheduler...");
+  recoverPendingCanaryEvaluations();
   startScheduler({
     onDayStart: async (day) => {
       const diff = getDifficultyForDay(day);
@@ -119,10 +128,44 @@ async function main() {
     },
   });
 
-  console.log(`GM Bot is running. Phase: ${getPhase()}`);
+  recordProcessHeartbeat({
+    processType: "gm",
+    processId: "gm",
+    uptimeSeconds: Math.floor(process.uptime()),
+    details: { phase: getPhase() },
+  });
+  const heartbeatTimer = setInterval(() => {
+    recordProcessHeartbeat({
+      processType: "gm",
+      processId: "gm",
+      uptimeSeconds: Math.floor(process.uptime()),
+      details: { phase: getPhase() },
+    });
+  }, Number(process.env.GM_HEARTBEAT_SECONDS || 60) * 1000);
+
+  process.on("SIGINT", () => {
+    clearInterval(heartbeatTimer);
+    recordRuntimeEvent({ event: "gm_shutdown", details: { signal: "SIGINT" } });
+    process.exit(0);
+  });
+
+  process.on("SIGTERM", () => {
+    clearInterval(heartbeatTimer);
+    recordRuntimeEvent({ event: "gm_shutdown", details: { signal: "SIGTERM" } });
+    process.exit(0);
+  });
+
+  console.log(`GM Bot is running. Phase: ${getPhase()} Run: ${getRunId()} Logs: ${getLogDir()}`);
 }
 
 main().catch((err) => {
+  try {
+    recordRuntimeEvent({
+      level: "error",
+      event: "gm_fatal_error",
+      details: { error: err instanceof Error ? err.message : String(err) },
+    });
+  } catch {}
   console.error("GM Bot fatal error:", err);
   process.exit(1);
 });

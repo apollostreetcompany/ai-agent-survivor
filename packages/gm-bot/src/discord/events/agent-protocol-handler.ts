@@ -7,6 +7,7 @@ import { recordCanaryResponse } from "../../integrity/canary.js";
 import { recordTiming } from "../../integrity/timing.js";
 import { recordEvent } from "../../commentary/narrator.js";
 import { db, schema } from "../../db/index.js";
+import { recordProcessHeartbeat, recordRuntimeEvent } from "../../ops/runtime.js";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -52,6 +53,17 @@ export async function handleAgentProtocolMessage(
   const replies: string[] = [];
   const integrityLogs: string[] = [];
   const receivedAt = sinks.receivedAt ?? Date.now();
+  const timingIssuedAt = (() => {
+    if (agentMsg.tag === "AGENT:CANARY_RESPONSE") {
+      const challenge = db
+        .select()
+        .from(schema.canaryChallenges)
+        .where(eq(schema.canaryChallenges.id, agentMsg.challengeId))
+        .get();
+      if (challenge) return new Date(challenge.issuedAt).getTime();
+    }
+    return receivedAt - 5000;
+  })();
 
   async function reply(line: string): Promise<void> {
     replies.push(line);
@@ -68,6 +80,12 @@ export async function handleAgentProtocolMessage(
       const result = claimTask(agentMsg.taskId, agentMsg.agentId);
       if (result.success) {
         await reply(`Task ${agentMsg.taskId} claimed.`);
+        recordRuntimeEvent({
+          event: "task_claimed",
+          processType: "agent",
+          processId: agentMsg.agentId,
+          details: { taskId: agentMsg.taskId },
+        });
         recordEvent({
           type: "task_claim",
           description: `${agentMsg.agentId} claimed task ${agentMsg.taskId}`,
@@ -84,6 +102,12 @@ export async function handleAgentProtocolMessage(
       const { task, valid } = await evaluateSubmission(taskId, taskResult);
 
       const submitResult = submitTask(taskId, agentMsg.agentId, taskResult, valid);
+      recordRuntimeEvent({
+        event: "task_submission_evaluated",
+        processType: "agent",
+        processId: agentMsg.agentId,
+        details: { taskId, valid, rewarded: submitResult.rewarded, reason: submitResult.reason },
+      });
       if (submitResult.rewarded) {
         const res = getResources(agentMsg.agentId);
         await reply(
@@ -103,10 +127,15 @@ export async function handleAgentProtocolMessage(
     }
     case "AGENT:CANARY_RESPONSE": {
       recordCanaryResponse(agentMsg.challengeId, agentMsg.agentId, agentMsg.response);
-      recordTiming(agentMsg.agentId, "canary", receivedAt - 30000, receivedAt);
       break;
     }
     case "AGENT:STATUS": {
+      recordProcessHeartbeat({
+        processType: "agent",
+        processId: agentMsg.agentId,
+        uptimeSeconds: agentMsg.uptimeSeconds,
+        memoryHash: agentMsg.memoryHash,
+      });
       await integrityLog(
         `**${agentMsg.agentId}** status: uptime=${agentMsg.uptimeSeconds}s hash=${agentMsg.memoryHash || "N/A"}`,
       );
@@ -114,7 +143,7 @@ export async function handleAgentProtocolMessage(
     }
   }
 
-  recordTiming(agentMsg.agentId, agentMsg.tag, receivedAt - 5000, receivedAt);
+  recordTiming(agentMsg.agentId, agentMsg.tag, timingIssuedAt, receivedAt);
 
   return { replies, integrityLogs };
 }

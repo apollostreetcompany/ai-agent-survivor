@@ -93,6 +93,14 @@ export function getTaskHistory(): Array<{ task_id: string; task_type: string; da
   return rows.map((r) => ({ ...r, success: Boolean(r.success) }));
 }
 
+/** Check whether a task has already been attempted by this agent. */
+export function hasTaskHistory(taskId: string): boolean {
+  const row = db
+    .prepare("SELECT 1 FROM task_history WHERE task_id = ? LIMIT 1")
+    .get(taskId);
+  return Boolean(row);
+}
+
 /** Get a SHA-256 hash of the memory state (for canary challenges) */
 export async function getMemoryHash(): Promise<string> {
   const all = db.prepare("SELECT key, value FROM memories ORDER BY key").all();

@@ -32,17 +32,17 @@ Success criteria:
 - [x] Bead 8: Landing page typography and result-focused copy.
 - [x] Bead 9: Landing page skill pass and production redeploy.
 - [x] Bead 10: Full landing page skill audit pass and production redeploy.
+- [x] Bead 11: Runnable Discord benchmark MVP with four agents, persistent ops state, local Mac supervision, and watchdog monitoring.
 
 ### Now
-- [ ] Bead 11: Live Discord dry run with real bot credentials and four launched agent processes.
-
-### Next
 - [ ] Bead 12: Consolidate default roster IDs into shared package to remove local duplication.
 
+### Next
+- [ ] Bead 13: Run the live Discord launch preflight with real credentials and OpenClaw hourly watchdog enabled.
+
 ## Open Questions
-- Should prototype agents all run from the existing agent-template container, or should each default agent have a distinct strategy profile?
-- Should the first operator surface be a Discord GM command, a CLI script, or both?
-- What hosting/runtime target should run always-on agents this week?
+- Should Bead 12 keep the default roster in shared constants only, or also expose a typed roster helper from `@survivor/shared`?
+- Should Bead 13 install the OpenClaw cron against `#gm-admin` or a dedicated ops Discord channel?
 
 ## Working Set
 - `packages/gm-bot/src/db/index.ts`
@@ -50,14 +50,21 @@ Success criteria:
 - `packages/gm-bot/src/engine/game-state.ts`
 - `packages/gm-bot/src/engine/resources.ts`
 - `packages/gm-bot/src/engine/scheduler.ts`
+- `packages/gm-bot/src/ops/runtime.ts`
 - `packages/shared/src/types.ts`
 - `packages/shared/src/constants.ts`
 - `packages/agent-template/src/agent.ts`
+- `packages/infra/scripts/benchmark-start.sh`
+- `packages/infra/scripts/benchmark-watchdog.sh`
 
 Useful commands:
 - `bun install`
 - `bun run build`
 - `bun test`
+- `bun run test`
+- `cd packages/infra && bun run benchmark:start`
+- `cd packages/infra && bun run benchmark:status`
+- `cd packages/infra && bun run benchmark:watchdog`
 
 <!-- BEGIN COMPOUND CODEX TOOL MAP -->
 ## Compound Codex Tool Mapping (Claude Compatibility)
