@@ -42,6 +42,7 @@ $EDITOR .env
 - Optional mail variables are either intentionally blank for local mail defaults or filled consistently.
 - Optional narrator variables are either blank or point at a valid narration provider key/model.
 - Local dependencies are installed with `bun install`.
+- `bun run benchmark:preflight` passes before `benchmark:start`.
 - Docker validation requires Docker installed and a working `docker compose` command.
 
 ## Known-Fair Cloud Agent Setup
@@ -106,12 +107,13 @@ Use infra scripts to run the local game-data feed, the GM, and four local agent 
 
 ```sh
 cd packages/infra
+bun run benchmark:preflight
 bun run benchmark:start
 bun run benchmark:status
 bun run benchmark:stop
 ```
 
-`benchmark:start` builds the workspace, maps the runbook credentials into each local process (`GM_DISCORD_TOKEN` → GM `DISCORD_TOKEN`, per-agent Discord/LLM keys → agent `DISCORD_TOKEN`/`LLM_API_KEY`), starts a local `/tasks` and `/market-feed` server on `GAME_DATA_PORT`, and writes PID, log, heartbeat, and status files under `BENCHMARK_RUNTIME_DIR` (default: `packages/infra/.runtime/discord-benchmark`). `benchmark:status` emits JSON status suitable for OpenClaw ingestion.
+`benchmark:preflight` verifies the live credential contract before launch: required Discord/LLM/OpenClaw variables are present, GM/agent Discord tokens are unique, agent bot user IDs are unique, and agent LLM API keys are unique. `benchmark:start` runs the same preflight, builds the workspace, maps the runbook credentials into each local process (`GM_DISCORD_TOKEN` → GM `DISCORD_TOKEN`, per-agent Discord/LLM keys → agent `DISCORD_TOKEN`/`LLM_API_KEY`), starts a local `/tasks` and `/market-feed` server on `GAME_DATA_PORT`, and writes PID, log, heartbeat, and status files under `BENCHMARK_RUNTIME_DIR` (default: `packages/infra/.runtime/discord-benchmark`). `benchmark:status` emits JSON status suitable for OpenClaw ingestion.
 
 Run watchdog once (or from cron) to restart missing/stale processes:
 
@@ -172,6 +174,7 @@ Before the live dry run:
 ```sh
 bun --filter @survivor/infra test
 bun run test
+cd packages/infra && bun run benchmark:preflight
 ```
 
 Use `bun run test` instead of raw `bun test`; the configured script routes GM tests through Node so `better-sqlite3` loads correctly.

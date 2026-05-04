@@ -12,6 +12,7 @@ const scriptsDir = resolve(infraRoot, "scripts");
 const sharedDefaultRosterPath = resolve(repoRoot, "packages/shared/src/default-roster.json");
 
 const scripts = {
+  preflight: resolve(scriptsDir, "benchmark-preflight.sh"),
   start: resolve(scriptsDir, "benchmark-start.sh"),
   stop: resolve(scriptsDir, "benchmark-stop.sh"),
   status: resolve(scriptsDir, "benchmark-status.sh"),
@@ -43,6 +44,32 @@ function expectedRuntimeProcesses() {
   return ["game-data", "gm-bot", ...defaultRosterAgentIds()];
 }
 
+function writeValidBenchmarkEnv(path, overrides = {}) {
+  const values = {
+    GUILD_ID: "guild-123",
+    GM_DISCORD_TOKEN: "gm-token",
+    AGENT_ALPHA_DISCORD_TOKEN: "alpha-discord-token",
+    AGENT_BRAVO_DISCORD_TOKEN: "bravo-discord-token",
+    AGENT_CHARLIE_DISCORD_TOKEN: "charlie-discord-token",
+    AGENT_DELTA_DISCORD_TOKEN: "delta-discord-token",
+    AGENT_ALPHA_DISCORD_BOT_ID: "alpha-discord-bot",
+    AGENT_BRAVO_DISCORD_BOT_ID: "bravo-discord-bot",
+    AGENT_CHARLIE_DISCORD_BOT_ID: "charlie-discord-bot",
+    AGENT_DELTA_DISCORD_BOT_ID: "delta-discord-bot",
+    AGENT_ALPHA_LLM_API_KEY: "alpha-llm-key",
+    AGENT_BRAVO_LLM_API_KEY: "bravo-llm-key",
+    AGENT_CHARLIE_LLM_API_KEY: "charlie-llm-key",
+    AGENT_DELTA_LLM_API_KEY: "delta-llm-key",
+    OPENCLAW_DISCORD_TARGET: "discord-target",
+    ...overrides,
+  };
+
+  writeFileSync(
+    path,
+    Object.entries(values).map(([key, value]) => `${key}=${value}`).join("\n"),
+  );
+}
+
 test("runtime supervision scripts exist and output process JSON without credentials", () => {
   const runtimeDir = mkdtempSync(resolve(tmpdir(), "infra-runtime-"));
   const expectedProcessCount = expectedRuntimeProcesses().length;
@@ -60,6 +87,73 @@ test("runtime supervision scripts exist and output process JSON without credenti
     assert.equal(stop.processes.length, expectedProcessCount);
   } finally {
     rmSync(runtimeDir, { recursive: true, force: true });
+  }
+});
+
+test("benchmark preflight fails before launch when required credentials are missing", () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-preflight-missing-"));
+  const envFile = resolve(tempRoot, ".env");
+
+  try {
+    writeFileSync(envFile, "GUILD_ID=guild-123\n");
+
+    assert.throws(
+      () => run(scripts.preflight, [], { envFile }),
+      /Missing required launch variables: GM_DISCORD_TOKEN/,
+    );
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark preflight rejects duplicate identity credentials", () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-preflight-duplicate-"));
+  const envFile = resolve(tempRoot, ".env");
+
+  try {
+    writeValidBenchmarkEnv(envFile, {
+      AGENT_DELTA_DISCORD_TOKEN: "alpha-discord-token",
+    });
+
+    assert.throws(
+      () => run(scripts.preflight, [], { envFile }),
+      /Discord bot tokens must be unique/,
+    );
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark preflight passes with complete known-fair launch credentials", () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-preflight-ok-"));
+  const envFile = resolve(tempRoot, ".env");
+
+  try {
+    writeValidBenchmarkEnv(envFile);
+
+    const result = JSON.parse(run(scripts.preflight, [], { envFile }));
+    assert.equal(result.preflight, "ok");
+    assert.equal(result.agentCount, defaultRosterAgentIds().length);
+    assert.equal(result.openclawTarget, "configured");
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark start runs credential preflight before launching processes", () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-start-preflight-"));
+  const envFile = resolve(tempRoot, ".env");
+  const runtimeDir = resolve(tempRoot, "runtime");
+
+  try {
+    writeFileSync(envFile, "GUILD_ID=guild-123\n");
+
+    assert.throws(
+      () => run(scripts.start, [], { envFile, runtimeDir }),
+      /Missing required launch variables: GM_DISCORD_TOKEN/,
+    );
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
   }
 });
 

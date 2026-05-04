@@ -57,6 +57,7 @@ const requiredCommands = [
   "cd packages/infra",
   "cp .env.example .env",
   "docker compose --env-file .env up --build",
+  "bun run benchmark:preflight",
   "bun run benchmark:start",
   "bun run benchmark:status",
   "bun run benchmark:stop",

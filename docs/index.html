@@ -252,6 +252,7 @@
               <h3>Start and supervise</h3>
               <ol class="command-list">
                 <li><code>cd packages/infra</code></li>
+                <li><code>bun run benchmark:preflight</code></li>
                 <li><code>bun run benchmark:start</code></li>
                 <li><code>bun run benchmark:status</code></li>
                 <li><code>openclaw cron add --every 1h --message "cd $PWD && bun run benchmark:watchdog" --announce --to "$OPENCLAW_DISCORD_TARGET"</code></li>

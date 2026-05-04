@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test test/*.test.js",
+    "benchmark:preflight": "./scripts/benchmark-preflight.sh",
     "benchmark:start": "./scripts/benchmark-start.sh",
     "benchmark:stop": "./scripts/benchmark-stop.sh",
     "benchmark:status": "./scripts/benchmark-status.sh",

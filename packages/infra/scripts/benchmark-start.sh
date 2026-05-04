@@ -15,6 +15,8 @@ load_env_if_present
 ensure_runtime_dirs
 
 if [[ "${DRY_RUN}" != "true" ]]; then
+  "${SCRIPT_DIR}/benchmark-preflight.sh" >/dev/null
+
   (
     cd "${REPO_ROOT}"
     bun run build
