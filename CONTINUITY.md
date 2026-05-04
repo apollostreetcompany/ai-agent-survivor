@@ -42,6 +42,7 @@ Success criteria:
 - Discord private-channel preflight uses explicit non-secret channel IDs and channel/message read endpoints, not guild-wide channel listing, so bots do not need broad channel-management permissions just to prove launch readiness.
 - Operators collect Discord server/channel/bot user IDs by enabling Discord Developer Mode and using Copy ID; tokens stay out of chat and only go into `packages/infra/.env`.
 - Runtime Discord channel binding uses the verified `DISCORD_*_CHANNEL_ID` values when configured; name lookup remains only a local/dev fallback.
+- `benchmark:start` must run `benchmark:doctor` before preflight, build, or process launch so OpenClaw/Hermes seat-list verification cannot be bypassed on the public start path.
 
 ## State
 ### Done
@@ -71,9 +72,10 @@ Success criteria:
 - [x] Bead 24: Least-privilege Discord channel ID preflight for private-server launch readiness.
 - [x] Bead 25: Discord Developer Mode / Copy ID guidance for private-server setup.
 - [x] Bead 26: Runtime Discord channel ID binding for GM, agents, Docker, and local supervision.
+- [x] Bead 27: Public benchmark start path gated by live readiness doctor and provider seat verification.
 
 ### Now
-- [ ] Bead 27: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
+- [ ] Bead 28: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
 
 ### Next
 - [ ] Publish Season 1 launch status/results after the first real 10-day Discord run.

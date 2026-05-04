@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
@@ -719,18 +719,88 @@ test("benchmark preflight passes with complete known-fair launch credentials", a
   }
 });
 
-test("benchmark start runs credential preflight before launching processes", () => {
-  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-start-preflight-"));
+test("benchmark start runs doctor gate before launching processes", async () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-start-doctor-"));
   const envFile = resolve(tempRoot, ".env");
   const runtimeDir = resolve(tempRoot, "runtime");
 
   try {
     writeFileSync(envFile, "GUILD_ID=guild-123\n");
 
-    assert.throws(
-      () => run(scripts.start, [], { envFile, runtimeDir }),
-      /Missing required launch variables: GM_DISCORD_TOKEN/,
+    const start = await runResult(scripts.start, [], { envFile, runtimeDir });
+    assert.notEqual(start.status, 0);
+    assert.equal(start.stdout, "");
+    const report = JSON.parse(start.stderr);
+    assert.equal(report.doctor, "blocked");
+    assert.equal(report.checks.some((check) => check.id === "required-vars" && check.status === "fail"), true);
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark start fails doctor seat gate before launch when declared seats are missing", async () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-start-doctor-seat-mismatch-"));
+  const envFile = resolve(tempRoot, ".env");
+  const runtimeDir = resolve(tempRoot, "runtime");
+  const binDir = resolve(tempRoot, "bin");
+  const openclawSeatsScript = resolve(tempRoot, "openclaw-seats.sh");
+  const hermesSeatsScript = resolve(tempRoot, "hermes-seats.sh");
+  const fakeBunScript = resolve(binDir, "bun");
+  const buildMarker = resolve(tempRoot, "build-was-called");
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    writeExecutable(openclawSeatsScript, "#!/bin/sh\nprintf 'openclaw-alpha\\n'\n");
+    writeExecutable(hermesSeatsScript, "#!/bin/sh\nprintf 'hermes-charlie\\nhermes-delta\\n'\n");
+    writeExecutable(
+      fakeBunScript,
+      `#!/bin/sh\nprintf 'unexpected bun invocation: %s\\n' "$*" >> ${shellQuote(buildMarker)}\nexit 0\n`,
     );
+
+    await withDiscordChannelServer(requiredDiscordChannels, async (discordApiBase) => {
+      writeValidBenchmarkEnv(envFile, {
+        BENCHMARK_OPENCLAW_COMMAND: "sh",
+        BENCHMARK_HERMES_COMMAND: "sh",
+        BENCHMARK_OPENCLAW_SEATS_COMMAND: openclawSeatsScript,
+        BENCHMARK_HERMES_SEATS_COMMAND: hermesSeatsScript,
+        BENCHMARK_DISCORD_API_BASE: discordApiBase,
+      });
+
+      const start = await runResult(scripts.start, [], {
+        envFile,
+        runtimeDir,
+        env: {
+          PATH: `${binDir}:${process.env.PATH}`,
+        },
+      });
+      assert.notEqual(start.status, 0);
+      assert.equal(start.stdout, "");
+      const report = JSON.parse(start.stderr);
+      assert.equal(report.doctor, "blocked");
+      assert.equal(
+        report.checks.some((check) => (
+          check.id === "openclaw-seats" &&
+          check.status === "fail" &&
+          check.summary.includes("openclaw-bravo")
+        )),
+        true,
+      );
+      assert.equal(report.checks.some((check) => check.id === "preflight" && check.status === "pass"), true);
+      assert.equal(existsSync(buildMarker), false);
+
+      const status = JSON.parse(run(scripts.status, [], { envFile, runtimeDir }));
+      assert.equal(status.processes.some((process) => process.running === true), false);
+
+      const eventsPath = resolve(runtimeDir, "events.jsonl");
+      const events = (() => {
+        try {
+          return readFileSync(eventsPath, "utf8");
+        } catch {
+          return "";
+        }
+      })();
+      assert.doesNotMatch(events, /"action":"start"/);
+    });
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }

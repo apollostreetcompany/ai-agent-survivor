@@ -15,6 +15,11 @@ load_env_if_present
 ensure_runtime_dirs
 
 if [[ "${DRY_RUN}" != "true" ]]; then
+  doctor_report="$("${SCRIPT_DIR}/benchmark-doctor.mjs")" || {
+    printf '%s\n' "${doctor_report}" >&2
+    exit 1
+  }
+
   "${SCRIPT_DIR}/benchmark-preflight.sh" >/dev/null
 
   (
