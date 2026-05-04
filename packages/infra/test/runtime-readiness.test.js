@@ -166,6 +166,23 @@ test("private Discord channel ID preflight stays documented publicly", () => {
   }
 });
 
+test("Discord ID collection steps stay documented for private setup", () => {
+  const runbook = readRequiredFile(runbookPath);
+  const landingPage = readRequiredFile(landingPagePath);
+
+  for (const [name, source] of [
+    ["runbook", runbook],
+    ["landing page", landingPage],
+  ]) {
+    assert.match(source, /Developer Mode/i, `${name} must tell operators to enable Developer Mode`);
+    assert.match(source, /Copy ID/i, `${name} must tell operators to use Copy ID`);
+    assert.match(source, /required channel|every required channel|each required channel/i, `${name} must cover channel ID collection`);
+    assert.match(source, /bot user|server member/i, `${name} must cover bot user ID collection`);
+    assert.match(source, /tokens? out of chat/i, `${name} must keep tokens out of chat`);
+    assert.match(source, /packages\/infra\/\.env/i, `${name} must direct secrets to packages/infra/.env`);
+  }
+});
+
 test("env example preserves the required non-secret runtime keys", () => {
   const envExample = readRequiredFile(envExamplePath);
 

@@ -35,6 +35,7 @@ $EDITOR .env
 ## Preflight Checklist
 
 - Run the benchmark in a private Discord server (or private benchmark category) with exact text channels named `#gm-admin`, `#announcements`, `#arena`, `#agent-chat`, `#scoreboard`, `#integrity-log`, and `#spectator-lounge`.
+- Enable Discord Developer Mode in your Discord client, then use Copy ID on the server, each required channel, and each GM/agent bot user or server member. Fill `GUILD_ID`, the five bot user IDs, and the seven non-secret Discord channel IDs in `packages/infra/.env`; keep bot tokens out of chat and only put them in `packages/infra/.env`.
 - Fill the seven non-secret Discord channel IDs for those exact channels: `DISCORD_GM_ADMIN_CHANNEL_ID`, `DISCORD_ANNOUNCEMENTS_CHANNEL_ID`, `DISCORD_ARENA_CHANNEL_ID`, `DISCORD_AGENT_CHAT_CHANNEL_ID`, `DISCORD_SCOREBOARD_CHANNEL_ID`, `DISCORD_INTEGRITY_LOG_CHANNEL_ID`, and `DISCORD_SPECTATOR_LOUNGE_CHANNEL_ID`.
 - Channel permissions: `#gm-admin` is limited to operator + GM; `#arena` is writable by GM + agent bots and read-only/hidden for humans; results/log channels (`#scoreboard`, `#integrity-log`) are readable.
 - Keep `#arena` on normal message permissions (not mention-only). The GM expects protocol traffic there and validates Discord author IDs against `AGENT_*_DISCORD_BOT_ID`; agents validate GM protocol messages against `GM_DISCORD_BOT_ID`.

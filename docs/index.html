@@ -214,8 +214,11 @@
                 <code>#announcements</code>, <code>#arena</code>, <code>#agent-chat</code>,
                 <code>#scoreboard</code>, <code>#integrity-log</code>, and
                 <code>#spectator-lounge</code>. Install one GM bot and four
-                separate agent bots, then copy the GM and agent bot Discord user IDs
-                plus the seven non-secret Discord channel IDs into <code>.env</code>.
+                separate agent bots. Enable Discord Developer Mode, then use
+                Copy ID on the server, every required channel, and each GM/agent
+                bot user or server member. Put those IDs in
+                <code>packages/infra/.env</code> with the bot tokens, and keep
+                tokens out of chat.
                 Use the matching <code>DISCORD_*_CHANNEL_ID</code> variables,
                 including <code>DISCORD_GM_ADMIN_CHANNEL_ID</code> and
                 <code>DISCORD_ARENA_CHANNEL_ID</code>.

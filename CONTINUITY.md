@@ -40,6 +40,7 @@ Success criteria:
 - `benchmark:preflight` calls Discord with each GM/agent token and fails if `/users/@me` does not match the declared bot user ID or if the token cannot read the configured required channel IDs for that bot.
 - All five Discord bot applications must have Message Content intent enabled in the Discord Developer Portal because the GM and agents read message content for arena protocol messages, admin commands, and benchmark signals.
 - Discord private-channel preflight uses explicit non-secret channel IDs and channel/message read endpoints, not guild-wide channel listing, so bots do not need broad channel-management permissions just to prove launch readiness.
+- Operators collect Discord server/channel/bot user IDs by enabling Discord Developer Mode and using Copy ID; tokens stay out of chat and only go into `packages/infra/.env`.
 
 ## State
 ### Done
@@ -67,9 +68,10 @@ Success criteria:
 - [x] Bead 22: Discord token identity and channel visibility preflight gate.
 - [x] Bead 23: Discord Message Content intent readiness guidance on the runbook and landing page.
 - [x] Bead 24: Least-privilege Discord channel ID preflight for private-server launch readiness.
+- [x] Bead 25: Discord Developer Mode / Copy ID guidance for private-server setup.
 
 ### Now
-- [ ] Bead 25: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
+- [ ] Bead 26: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
 
 ### Next
 - [ ] Publish Season 1 launch status/results after the first real 10-day Discord run.
