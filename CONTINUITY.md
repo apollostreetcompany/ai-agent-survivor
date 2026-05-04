@@ -35,6 +35,7 @@ Success criteria:
 - The Discord arena should run in a private server or private benchmark category; `#arena` stays on normal message permissions because fairness is enforced by Discord author ID checks, while mention-only is acceptable for `#agent-chat` or watchdog ops announcements.
 - `.env.example` must be shell-sourceable after `cp .env.example .env`; command values with spaces must be quoted so the runtime scripts can load the template before secrets are filled.
 - The 10-day runtime should restart crashed Docker services and detect stale local supervised processes, including live PIDs with stale logs and missing heartbeats.
+- `benchmark:preflight` should fail before launch if the GM Discord token cannot see all required private-server channels.
 
 ## State
 ### Done
@@ -57,9 +58,10 @@ Success criteria:
 - [x] Bead 17: Private Discord setup guidance for channel permissions and mention-only boundaries.
 - [x] Bead 18: Shell-sourceable benchmark env template with regression coverage.
 - [x] Bead 19: 10-day runtime hardening for Docker restart policies, game-data healthcheck, and watchdog stale detection.
+- [x] Bead 20: Discord channel preflight gate for private-server launch readiness.
 
 ### Now
-- [ ] Bead 20: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
+- [ ] Bead 21: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
 
 ### Next
 - [ ] Publish Season 1 launch status/results after the first real 10-day Discord run.
@@ -87,6 +89,7 @@ Success criteria:
 - `packages/infra/scripts/benchmark-start.sh`
 - `packages/infra/scripts/benchmark-doctor.mjs`
 - `packages/infra/scripts/benchmark-preflight.sh`
+- `packages/infra/scripts/benchmark-discord-channels.mjs`
 - `packages/infra/scripts/benchmark-metadata.mjs`
 - `packages/infra/scripts/benchmark-watchdog.sh`
 - `packages/infra/scripts/benchmark-common.sh`

@@ -52,6 +52,26 @@ if [[ "${#missing[@]}" -gt 0 ]]; then
   exit 1
 fi
 
+assert_provider() {
+  local name="$1"
+  local value="$2"
+  case "${value}" in
+    openclaw|hermes)
+      return 0
+      ;;
+    *)
+      printf '%s must be one of: openclaw, hermes\n' "${name}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+assert_provider "BENCHMARK_WATCHDOG_SUPERVISOR" "${BENCHMARK_WATCHDOG_SUPERVISOR}"
+assert_provider "AGENT_ALPHA_CLOUD_SEAT_PROVIDER" "${AGENT_ALPHA_CLOUD_SEAT_PROVIDER}"
+assert_provider "AGENT_BRAVO_CLOUD_SEAT_PROVIDER" "${AGENT_BRAVO_CLOUD_SEAT_PROVIDER}"
+assert_provider "AGENT_CHARLIE_CLOUD_SEAT_PROVIDER" "${AGENT_CHARLIE_CLOUD_SEAT_PROVIDER}"
+assert_provider "AGENT_DELTA_CLOUD_SEAT_PROVIDER" "${AGENT_DELTA_CLOUD_SEAT_PROVIDER}"
+
 assert_unique_values() {
   local label="$1"
   shift
@@ -94,6 +114,8 @@ assert_unique_values \
   "${AGENT_BRAVO_CLOUD_SEAT_ID}" \
   "${AGENT_CHARLIE_CLOUD_SEAT_ID}" \
   "${AGENT_DELTA_CLOUD_SEAT_ID}"
+
+node "${SCRIPT_DIR}/benchmark-discord-channels.mjs" >/dev/null
 
 agent_count=$(( ${#PROCESS_NAMES[@]} - 2 ))
 metadata_path="${BENCHMARK_METADATA_PATH:-${RUNTIME_DIR}/run-metadata.json}"

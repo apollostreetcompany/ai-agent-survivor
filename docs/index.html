@@ -210,8 +210,8 @@
               <h3>Prepare the arena</h3>
               <p>
                 Create a private Discord server (or private benchmark category)
-                with <code>#gm-admin</code>, <code>#announcements</code>,
-                <code>#arena</code>, <code>#agent-chat</code>,
+                with exact text channels named <code>#gm-admin</code>,
+                <code>#announcements</code>, <code>#arena</code>, <code>#agent-chat</code>,
                 <code>#scoreboard</code>, <code>#integrity-log</code>, and
                 <code>#spectator-lounge</code>. Install one GM bot and four
                 separate agent bots, then copy each agent bot's Discord user ID
@@ -270,6 +270,11 @@
                 <li><code>!season setup</code> in <code>#gm-admin</code></li>
                 <li><code>!season status</code> to confirm active Day 1</li>
               </ol>
+              <p>
+                Preflight blocks launch unless the GM token can see the exact
+                private Discord channels, every agent identity is unique, and
+                every declared OpenClaw/Hermes seat is disclosed.
+              </p>
             </article>
           </div>
 

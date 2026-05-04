@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
@@ -10,6 +11,15 @@ const infraRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(infraRoot, "../..");
 const scriptsDir = resolve(infraRoot, "scripts");
 const sharedDefaultRosterPath = resolve(repoRoot, "packages/shared/src/default-roster.json");
+const requiredDiscordChannels = [
+  "announcements",
+  "arena",
+  "agent-chat",
+  "scoreboard",
+  "integrity-log",
+  "spectator-lounge",
+  "gm-admin",
+];
 
 const scripts = {
   preflight: resolve(scriptsDir, "benchmark-preflight.sh"),
@@ -36,6 +46,47 @@ function run(scriptPath, args = [], { runtimeDir, envFile = resolve(infraRoot, "
   });
 }
 
+async function runResult(scriptPath, args = [], { runtimeDir, envFile = resolve(infraRoot, ".env.test.missing"), env = {} } = {}) {
+  const childEnv = {
+    ...process.env,
+    BENCHMARK_ENV_FILE: envFile,
+    ...env,
+  };
+  if (runtimeDir) {
+    childEnv.BENCHMARK_RUNTIME_DIR = runtimeDir;
+  }
+
+  return await new Promise((resolve, reject) => {
+    const child = spawn(scriptPath, args, {
+      env: childEnv,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.once("error", reject);
+    child.once("close", (status) => {
+      resolve({ status, stdout, stderr });
+    });
+  });
+}
+
+async function runPreflight({ runtimeDir, envFile, env = {} } = {}) {
+  const result = await runResult(scripts.preflight, [], { runtimeDir, envFile, env });
+  if (result.status !== 0) {
+    throw new Error(result.stderr || result.stdout || `preflight exited ${result.status}`);
+  }
+  return result.stdout;
+}
+
 function defaultRosterAgentIds() {
   const roster = JSON.parse(readFileSync(sharedDefaultRosterPath, "utf8"));
   return roster.map((agent) => agent.id);
@@ -55,6 +106,10 @@ function runDoctor({ runtimeDir, envFile, env = {} } = {}) {
     encoding: "utf8",
     env: childEnv,
   });
+}
+
+async function runDoctorAsync({ runtimeDir, envFile, env = {} } = {}) {
+  return await runResult(scripts.doctor, [], { runtimeDir, envFile, env });
 }
 
 function expectedRuntimeProcesses() {
@@ -110,6 +165,38 @@ function shellEnvValue(value) {
   const stringValue = String(value);
   if (/^[A-Za-z0-9_./:@-]+$/.test(stringValue)) return stringValue;
   return `"${stringValue.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+async function withDiscordChannelServer(channelNames, callback) {
+  const channels = channelNames.map((name, index) => ({
+    id: String(index + 1),
+    type: 0,
+    name,
+  }));
+  const server = createServer((req, res) => {
+    if (req.url === "/guilds/guild-123/channels") {
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify(channels));
+      return;
+    }
+
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: "not found" }));
+  });
+
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+
+  try {
+    const address = server.address();
+    assert.equal(typeof address, "object");
+    return await callback(`http://127.0.0.1:${address.port}`);
+  } finally {
+    server.closeAllConnections?.();
+    await new Promise((resolve) => server.close(resolve));
+  }
 }
 
 test("runtime supervision scripts exist and output process JSON without credentials", () => {
@@ -202,6 +289,26 @@ test("benchmark preflight rejects undisclosed or unsupported cloud runtimes", ()
   }
 });
 
+test("benchmark preflight rejects Discord servers missing required channels", async () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-preflight-discord-channels-"));
+  const envFile = resolve(tempRoot, ".env");
+
+  try {
+    await withDiscordChannelServer(["gm-admin", "arena"], async (discordApiBase) => {
+      writeValidBenchmarkEnv(envFile, {
+        BENCHMARK_DISCORD_API_BASE: discordApiBase,
+      });
+
+      await assert.rejects(
+        () => runPreflight({ envFile }),
+        /Missing required Discord channels: announcements/,
+      );
+    });
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
 test("benchmark doctor fails when packages/infra/.env is missing", () => {
   const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-missing-env-"));
   const envFile = resolve(tempRoot, ".env");
@@ -219,7 +326,7 @@ test("benchmark doctor fails when packages/infra/.env is missing", () => {
   }
 });
 
-test("benchmark doctor fails when required docker command is missing", () => {
+test("benchmark doctor fails when required docker command is missing", async () => {
   const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-missing-docker-"));
   const envFile = resolve(tempRoot, ".env");
   const runtimeDir = resolve(tempRoot, "runtime");
@@ -230,26 +337,29 @@ test("benchmark doctor fails when required docker command is missing", () => {
     writeExecutable(openclawSeatsScript, "#!/bin/sh\nprintf 'openclaw-alpha\\nopenclaw-bravo\\n'\n");
     writeExecutable(hermesSeatsScript, "#!/bin/sh\nprintf 'hermes-charlie\\nhermes-delta\\n'\n");
 
-    writeValidBenchmarkEnv(envFile, {
-      BENCHMARK_REQUIRE_DOCKER: "1",
-      BENCHMARK_DOCKER_COMMAND: "docker-does-not-exist",
-      BENCHMARK_OPENCLAW_COMMAND: "sh",
-      BENCHMARK_HERMES_COMMAND: "sh",
-      BENCHMARK_OPENCLAW_SEATS_COMMAND: openclawSeatsScript,
-      BENCHMARK_HERMES_SEATS_COMMAND: hermesSeatsScript,
+    await withDiscordChannelServer(requiredDiscordChannels, async (discordApiBase) => {
+      writeValidBenchmarkEnv(envFile, {
+        BENCHMARK_REQUIRE_DOCKER: "1",
+        BENCHMARK_DOCKER_COMMAND: "docker-does-not-exist",
+        BENCHMARK_OPENCLAW_COMMAND: "sh",
+        BENCHMARK_HERMES_COMMAND: "sh",
+        BENCHMARK_OPENCLAW_SEATS_COMMAND: openclawSeatsScript,
+        BENCHMARK_HERMES_SEATS_COMMAND: hermesSeatsScript,
+        BENCHMARK_DISCORD_API_BASE: discordApiBase,
+      });
+
+      const doctor = await runDoctorAsync({ envFile, runtimeDir });
+      assert.notEqual(doctor.status, 0);
+
+      const report = JSON.parse(doctor.stdout);
+      assert.equal(report.checks.some((check) => check.id === "docker-command" && check.status === "fail"), true);
     });
-
-    const doctor = runDoctor({ envFile, runtimeDir });
-    assert.notEqual(doctor.status, 0);
-
-    const report = JSON.parse(doctor.stdout);
-    assert.equal(report.checks.some((check) => check.id === "docker-command" && check.status === "fail"), true);
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }
 });
 
-test("benchmark doctor validates OpenClaw/Hermes command availability from env", () => {
+test("benchmark doctor validates OpenClaw/Hermes command availability from env", async () => {
   const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-provider-check-"));
   const envFile = resolve(tempRoot, ".env");
   const runtimeDir = resolve(tempRoot, "runtime");
@@ -258,25 +368,28 @@ test("benchmark doctor validates OpenClaw/Hermes command availability from env",
   try {
     writeExecutable(openclawSeatsScript, "#!/bin/sh\nprintf 'openclaw-alpha\\nopenclaw-bravo\\n'\n");
 
-    writeValidBenchmarkEnv(envFile, {
-      BENCHMARK_OPENCLAW_COMMAND: "sh",
-      BENCHMARK_HERMES_COMMAND: "hermes-does-not-exist",
-      BENCHMARK_OPENCLAW_SEATS_COMMAND: openclawSeatsScript,
+    await withDiscordChannelServer(requiredDiscordChannels, async (discordApiBase) => {
+      writeValidBenchmarkEnv(envFile, {
+        BENCHMARK_OPENCLAW_COMMAND: "sh",
+        BENCHMARK_HERMES_COMMAND: "hermes-does-not-exist",
+        BENCHMARK_OPENCLAW_SEATS_COMMAND: openclawSeatsScript,
+        BENCHMARK_DISCORD_API_BASE: discordApiBase,
+      });
+
+      const doctor = await runDoctorAsync({ envFile, runtimeDir });
+      assert.notEqual(doctor.status, 0);
+
+      const report = JSON.parse(doctor.stdout);
+      assert.equal(report.checks.some((check) => check.id === "openclaw-command" && check.status === "pass"), true);
+      assert.equal(report.checks.some((check) => check.id === "openclaw-seats" && check.status === "pass"), true);
+      assert.equal(report.checks.some((check) => check.id === "hermes-command" && check.status === "fail"), true);
     });
-
-    const doctor = runDoctor({ envFile, runtimeDir });
-    assert.notEqual(doctor.status, 0);
-
-    const report = JSON.parse(doctor.stdout);
-    assert.equal(report.checks.some((check) => check.id === "openclaw-command" && check.status === "pass"), true);
-    assert.equal(report.checks.some((check) => check.id === "openclaw-seats" && check.status === "pass"), true);
-    assert.equal(report.checks.some((check) => check.id === "hermes-command" && check.status === "fail"), true);
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }
 });
 
-test("benchmark doctor fails when declared seat IDs are not in provider command output", () => {
+test("benchmark doctor fails when declared seat IDs are not in provider command output", async () => {
   const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-seat-mismatch-"));
   const envFile = resolve(tempRoot, ".env");
   const runtimeDir = resolve(tempRoot, "runtime");
@@ -287,25 +400,28 @@ test("benchmark doctor fails when declared seat IDs are not in provider command 
     writeExecutable(openclawSeatsScript, "#!/bin/sh\nprintf 'openclaw-alpha\\n'\n");
     writeExecutable(hermesSeatsScript, "#!/bin/sh\nprintf 'hermes-charlie\\nhermes-delta\\n'\n");
 
-    writeValidBenchmarkEnv(envFile, {
-      BENCHMARK_OPENCLAW_COMMAND: "sh",
-      BENCHMARK_HERMES_COMMAND: "sh",
-      BENCHMARK_OPENCLAW_SEATS_COMMAND: openclawSeatsScript,
-      BENCHMARK_HERMES_SEATS_COMMAND: hermesSeatsScript,
+    await withDiscordChannelServer(requiredDiscordChannels, async (discordApiBase) => {
+      writeValidBenchmarkEnv(envFile, {
+        BENCHMARK_OPENCLAW_COMMAND: "sh",
+        BENCHMARK_HERMES_COMMAND: "sh",
+        BENCHMARK_OPENCLAW_SEATS_COMMAND: openclawSeatsScript,
+        BENCHMARK_HERMES_SEATS_COMMAND: hermesSeatsScript,
+        BENCHMARK_DISCORD_API_BASE: discordApiBase,
+      });
+
+      const doctor = await runDoctorAsync({ envFile, runtimeDir });
+      assert.notEqual(doctor.status, 0);
+
+      const report = JSON.parse(doctor.stdout);
+      assert.equal(report.checks.some((check) => check.id === "openclaw-seats" && check.status === "fail"), true);
+      assert.equal(report.checks.some((check) => check.id === "hermes-seats" && check.status === "pass"), true);
     });
-
-    const doctor = runDoctor({ envFile, runtimeDir });
-    assert.notEqual(doctor.status, 0);
-
-    const report = JSON.parse(doctor.stdout);
-    assert.equal(report.checks.some((check) => check.id === "openclaw-seats" && check.status === "fail"), true);
-    assert.equal(report.checks.some((check) => check.id === "hermes-seats" && check.status === "pass"), true);
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }
 });
 
-test("benchmark doctor accepts seat IDs from temp fake seat command files", () => {
+test("benchmark doctor accepts seat IDs from temp fake seat command files", async () => {
   const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-seat-fake-command-"));
   const envFile = resolve(tempRoot, ".env");
   const runtimeDir = resolve(tempRoot, "runtime");
@@ -316,22 +432,25 @@ test("benchmark doctor accepts seat IDs from temp fake seat command files", () =
     writeExecutable(openclawSeatsScript, "#!/bin/sh\nprintf 'openclaw-alpha\\nopenclaw-bravo\\n'\n");
     writeExecutable(hermesSeatsScript, "#!/bin/sh\nprintf 'hermes-charlie\\nhermes-delta\\n'\n");
 
-    writeValidBenchmarkEnv(envFile, {
-      BENCHMARK_OPENCLAW_COMMAND: "sh",
-      BENCHMARK_HERMES_COMMAND: "sh",
-      BENCHMARK_OPENCLAW_SEATS_COMMAND: openclawSeatsScript,
-      BENCHMARK_HERMES_SEATS_COMMAND: hermesSeatsScript,
+    await withDiscordChannelServer(requiredDiscordChannels, async (discordApiBase) => {
+      writeValidBenchmarkEnv(envFile, {
+        BENCHMARK_OPENCLAW_COMMAND: "sh",
+        BENCHMARK_HERMES_COMMAND: "sh",
+        BENCHMARK_OPENCLAW_SEATS_COMMAND: openclawSeatsScript,
+        BENCHMARK_HERMES_SEATS_COMMAND: hermesSeatsScript,
+        BENCHMARK_DISCORD_API_BASE: discordApiBase,
+      });
+
+      const doctor = await runDoctorAsync({ envFile, runtimeDir });
+      assert.equal(doctor.status, 0);
+
+      const report = JSON.parse(doctor.stdout);
+      assert.equal(report.checks.some((check) => check.id === "openclaw-seats" && check.status === "pass"), true);
+      assert.equal(report.checks.some((check) => check.id === "hermes-seats" && check.status === "pass"), true);
+      assert.equal(report.doctor, "ok");
+      assert.equal(report.preflight.ok, true);
+      assert.equal(report.metadata.path, resolve(runtimeDir, "run-metadata.json"));
     });
-
-    const doctor = runDoctor({ envFile, runtimeDir });
-    assert.equal(doctor.status, 0);
-
-    const report = JSON.parse(doctor.stdout);
-    assert.equal(report.checks.some((check) => check.id === "openclaw-seats" && check.status === "pass"), true);
-    assert.equal(report.checks.some((check) => check.id === "hermes-seats" && check.status === "pass"), true);
-    assert.equal(report.doctor, "ok");
-    assert.equal(report.preflight.ok, true);
-    assert.equal(report.metadata.path, resolve(runtimeDir, "run-metadata.json"));
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }
@@ -369,39 +488,43 @@ test("benchmark doctor integrates preflight and never prints secret values", () 
   }
 });
 
-test("benchmark preflight passes with complete known-fair launch credentials", () => {
+test("benchmark preflight passes with complete known-fair launch credentials", async () => {
   const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-preflight-ok-"));
   const envFile = resolve(tempRoot, ".env");
   const runtimeDir = resolve(tempRoot, "runtime");
 
   try {
-    writeValidBenchmarkEnv(envFile);
+    await withDiscordChannelServer(requiredDiscordChannels, async (discordApiBase) => {
+      writeValidBenchmarkEnv(envFile, {
+        BENCHMARK_DISCORD_API_BASE: discordApiBase,
+      });
 
-    const result = JSON.parse(run(scripts.preflight, [], { envFile, runtimeDir }));
-    assert.equal(result.preflight, "ok");
-    assert.equal(result.agentCount, defaultRosterAgentIds().length);
-    assert.equal(result.openclawTarget, "configured");
-    assert.equal(result.metadata, resolve(runtimeDir, "run-metadata.json"));
+      const result = JSON.parse(await runPreflight({ envFile, runtimeDir }));
+      assert.equal(result.preflight, "ok");
+      assert.equal(result.agentCount, defaultRosterAgentIds().length);
+      assert.equal(result.openclawTarget, "configured");
+      assert.equal(result.metadata, resolve(runtimeDir, "run-metadata.json"));
 
-    const metadata = JSON.parse(readFileSync(result.metadata, "utf8"));
-    assert.equal(metadata.schemaVersion, 1);
-    assert.equal(metadata.runId, "discord-benchmark");
-    assert.deepEqual(
-      metadata.agents.map((agent) => agent.id),
-      defaultRosterAgentIds(),
-    );
-    assert.deepEqual(
-      metadata.agents.map((agent) => agent.cloudSeatProvider),
-      ["openclaw", "openclaw", "hermes", "hermes"],
-    );
-    assert.equal(metadata.agents[0].cloudSeatId, "openclaw-alpha");
-    assert.equal(metadata.agents[0].llmProvider, "anthropic");
-    assert.equal(metadata.agents[0].llmModel, "claude-alpha");
-    assert.equal(metadata.supervision.watchdog.supervisor, "openclaw");
-    assert.equal(metadata.supervision.watchdog.cadence, "1h");
-    const serialized = JSON.stringify(metadata);
-    assert.equal(serialized.includes("alpha-discord-token"), false);
-    assert.equal(serialized.includes("alpha-llm-key"), false);
+      const metadata = JSON.parse(readFileSync(result.metadata, "utf8"));
+      assert.equal(metadata.schemaVersion, 1);
+      assert.equal(metadata.runId, "discord-benchmark");
+      assert.deepEqual(
+        metadata.agents.map((agent) => agent.id),
+        defaultRosterAgentIds(),
+      );
+      assert.deepEqual(
+        metadata.agents.map((agent) => agent.cloudSeatProvider),
+        ["openclaw", "openclaw", "hermes", "hermes"],
+      );
+      assert.equal(metadata.agents[0].cloudSeatId, "openclaw-alpha");
+      assert.equal(metadata.agents[0].llmProvider, "anthropic");
+      assert.equal(metadata.agents[0].llmModel, "claude-alpha");
+      assert.equal(metadata.supervision.watchdog.supervisor, "openclaw");
+      assert.equal(metadata.supervision.watchdog.cadence, "1h");
+      const serialized = JSON.stringify(metadata);
+      assert.equal(serialized.includes("alpha-discord-token"), false);
+      assert.equal(serialized.includes("alpha-llm-key"), false);
+    });
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }
