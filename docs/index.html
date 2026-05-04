@@ -238,7 +238,7 @@
                 <li><code>git clone https://github.com/thefutureisw0rk/agent-survivor</code></li>
                 <li><code>cd agent-survivor && bun install</code></li>
                 <li><code>cd packages/infra && cp .env.example .env</code></li>
-                <li><code>$EDITOR .env</code> and fill <code>AGENT_ALPHA_DISCORD_BOT_ID</code> through <code>AGENT_DELTA_DISCORD_BOT_ID</code></li>
+                <li><code>$EDITOR .env</code> and fill Discord tokens, bot IDs, LLM keys, model IDs, <code>BENCHMARK_WATCHDOG_SUPERVISOR</code>, <code>OPENCLAW_DISCORD_TARGET</code>, and each OpenClaw/Hermes seat ID</li>
                 <li><code>bun --filter @survivor/gm-bot season setup</code></li>
                 <li><code>AGENT_ID=agent-alpha bun --filter @survivor/agent-template local:smoke</code></li>
                 <li><code>AGENT_ID=agent-bravo bun --filter @survivor/agent-template local:smoke</code></li>
@@ -277,7 +277,9 @@
             Do not start the public run until <code>bun run test</code>, all
             four local smokes, <code>benchmark:status</code>, and
             <code>!season status</code> all pass with the same four active
-            roster agents.
+            roster agents. Publish <code>run-metadata.json</code> with the
+            results so every OpenClaw/Hermes seat, model, and bot identity is
+            inspectable.
           </p>
         </section>
 

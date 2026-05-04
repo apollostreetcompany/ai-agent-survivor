@@ -1,11 +1,13 @@
 ## Goal
-Add real playable agents to AI Agent Survivor this week.
+Ship a fair, runnable, publishable first-run 10-day AI Agent Survivor benchmark.
 
 Success criteria:
 - The GM can bootstrap a deterministic roster for local/prototype play.
 - A season cannot start silently with too few or zero agents.
 - Registered agents can be activated into an active Day 1 game.
 - Agent-facing gameplay paths are covered by fail-first tests.
+- The public launch path uses the canonical four-agent roster, separate Discord identities, disclosed OpenClaw/Hermes cloud seats, and hourly watchdog supervision.
+- The landing page and runbook include a ready-to-go first-run instruction set that can be published with the benchmark.
 - Each bead lands as a small commit and is pushed immediately.
 
 ## Constraints/Assumptions
@@ -16,6 +18,7 @@ Success criteria:
 - Discord and Cloudflare deployment are separate from the local gameplay bootstrap path.
 - A publishable first run must use a clean Day 1 reset, the canonical four-agent roster, separate Discord bot user IDs, and disclosed OpenClaw/Hermes watchdog supervision.
 - `benchmark:start` must not launch a public run until `benchmark:preflight` verifies required live credentials and uniqueness.
+- `benchmark:preflight` writes a non-secret run metadata manifest so the public results can disclose cloud seats, models, bot IDs, git SHA, and fairness settings without leaking tokens or API keys.
 
 ## Key Decisions
 - Bead 1 is focused on deterministic agent bootstrap and game activation, not Discord admin commands.
@@ -24,6 +27,7 @@ Success criteria:
 - `!season setup` is the public launch path and resets stale roster/gameplay state before starting Day 1.
 - Live Discord agent messages are accepted only when the claimed roster ID matches the registered Discord bot user ID.
 - The local supervised benchmark path has an explicit credential preflight gate; missing credentials are a launch blocker, not a runtime surprise.
+- OpenClaw/Hermes runtime fairness is represented as required public disclosure: watchdog supervisor, cloud seat provider/ID per roster agent, LLM provider/model per seat, and watchdog announcement target.
 
 ## State
 ### Done
@@ -40,16 +44,17 @@ Success criteria:
 - [x] Bead 11: Runnable Discord benchmark MVP with four agents, persistent ops state, local Mac supervision, and watchdog monitoring.
 - [x] Bead 12: Shared canonical roster with fresh fair setup, Discord identity checks, and publishable first-run instructions.
 - [x] Bead 13: Launch credential preflight gate for known-fair Discord/OpenClaw runs.
+- [x] Bead 14: Non-secret run metadata manifest and OpenClaw/Hermes disclosure gate.
 
 ### Now
-- [ ] Bead 14: Run the live Discord launch preflight with real credentials and OpenClaw hourly watchdog enabled.
+- [ ] Bead 15: Run the live Discord launch preflight with real credentials, Docker available, and OpenClaw/Hermes hourly watchdog enabled.
 
 ### Next
 - [ ] Publish Season 1 launch status/results after the first real 10-day Discord run.
 
 ## Open Questions
-- Should Bead 14 install the OpenClaw cron against `#gm-admin` or a dedicated ops Discord channel?
-- Which exact OpenClaw/Hermes cloud agents and provider/model IDs should be disclosed for each roster seat before Season 1 starts?
+- `packages/infra/.env` is not present locally; Season 1 still needs real Discord tokens, bot IDs, LLM keys/models, OpenClaw/Hermes seat IDs, and `OPENCLAW_DISCORD_TARGET`.
+- Docker is not installed on this machine, so compose validation is blocked until Docker is available or the run uses the local Bun supervision path only.
 
 ## Working Set
 - `packages/gm-bot/src/db/index.ts`
@@ -68,6 +73,7 @@ Success criteria:
 - `packages/agent-template/src/local-runner.ts`
 - `packages/infra/scripts/benchmark-start.sh`
 - `packages/infra/scripts/benchmark-preflight.sh`
+- `packages/infra/scripts/benchmark-metadata.mjs`
 - `packages/infra/scripts/benchmark-watchdog.sh`
 - `packages/infra/scripts/benchmark-common.sh`
 - `packages/infra/RUNBOOK.md`

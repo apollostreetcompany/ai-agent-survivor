@@ -56,10 +56,24 @@ function writeValidBenchmarkEnv(path, overrides = {}) {
     AGENT_BRAVO_DISCORD_BOT_ID: "bravo-discord-bot",
     AGENT_CHARLIE_DISCORD_BOT_ID: "charlie-discord-bot",
     AGENT_DELTA_DISCORD_BOT_ID: "delta-discord-bot",
+    LLM_PROVIDER: "anthropic",
+    BENCHMARK_WATCHDOG_SUPERVISOR: "openclaw",
+    AGENT_ALPHA_CLOUD_SEAT_PROVIDER: "openclaw",
+    AGENT_BRAVO_CLOUD_SEAT_PROVIDER: "openclaw",
+    AGENT_CHARLIE_CLOUD_SEAT_PROVIDER: "hermes",
+    AGENT_DELTA_CLOUD_SEAT_PROVIDER: "hermes",
+    AGENT_ALPHA_CLOUD_SEAT_ID: "openclaw-alpha",
+    AGENT_BRAVO_CLOUD_SEAT_ID: "openclaw-bravo",
+    AGENT_CHARLIE_CLOUD_SEAT_ID: "hermes-charlie",
+    AGENT_DELTA_CLOUD_SEAT_ID: "hermes-delta",
     AGENT_ALPHA_LLM_API_KEY: "alpha-llm-key",
     AGENT_BRAVO_LLM_API_KEY: "bravo-llm-key",
     AGENT_CHARLIE_LLM_API_KEY: "charlie-llm-key",
     AGENT_DELTA_LLM_API_KEY: "delta-llm-key",
+    AGENT_ALPHA_LLM_MODEL: "claude-alpha",
+    AGENT_BRAVO_LLM_MODEL: "claude-bravo",
+    AGENT_CHARLIE_LLM_MODEL: "claude-charlie",
+    AGENT_DELTA_LLM_MODEL: "claude-delta",
     OPENCLAW_DISCORD_TARGET: "discord-target",
     ...overrides,
   };
@@ -124,17 +138,75 @@ test("benchmark preflight rejects duplicate identity credentials", () => {
   }
 });
 
+test("benchmark preflight rejects duplicate cloud seat IDs", () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-preflight-duplicate-seat-"));
+  const envFile = resolve(tempRoot, ".env");
+
+  try {
+    writeValidBenchmarkEnv(envFile, {
+      AGENT_DELTA_CLOUD_SEAT_ID: "openclaw-alpha",
+    });
+
+    assert.throws(
+      () => run(scripts.preflight, [], { envFile }),
+      /Cloud seat IDs must be unique/,
+    );
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark preflight rejects undisclosed or unsupported cloud runtimes", () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-preflight-runtime-"));
+  const envFile = resolve(tempRoot, ".env");
+
+  try {
+    writeValidBenchmarkEnv(envFile, {
+      AGENT_ALPHA_CLOUD_SEAT_PROVIDER: "local-template",
+    });
+
+    assert.throws(
+      () => run(scripts.preflight, [], { envFile }),
+      /AGENT_ALPHA_CLOUD_SEAT_PROVIDER must be one of: openclaw, hermes/,
+    );
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
 test("benchmark preflight passes with complete known-fair launch credentials", () => {
   const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-preflight-ok-"));
   const envFile = resolve(tempRoot, ".env");
+  const runtimeDir = resolve(tempRoot, "runtime");
 
   try {
     writeValidBenchmarkEnv(envFile);
 
-    const result = JSON.parse(run(scripts.preflight, [], { envFile }));
+    const result = JSON.parse(run(scripts.preflight, [], { envFile, runtimeDir }));
     assert.equal(result.preflight, "ok");
     assert.equal(result.agentCount, defaultRosterAgentIds().length);
     assert.equal(result.openclawTarget, "configured");
+    assert.equal(result.metadata, resolve(runtimeDir, "run-metadata.json"));
+
+    const metadata = JSON.parse(readFileSync(result.metadata, "utf8"));
+    assert.equal(metadata.schemaVersion, 1);
+    assert.equal(metadata.runId, "discord-benchmark");
+    assert.deepEqual(
+      metadata.agents.map((agent) => agent.id),
+      defaultRosterAgentIds(),
+    );
+    assert.deepEqual(
+      metadata.agents.map((agent) => agent.cloudSeatProvider),
+      ["openclaw", "openclaw", "hermes", "hermes"],
+    );
+    assert.equal(metadata.agents[0].cloudSeatId, "openclaw-alpha");
+    assert.equal(metadata.agents[0].llmProvider, "anthropic");
+    assert.equal(metadata.agents[0].llmModel, "claude-alpha");
+    assert.equal(metadata.supervision.watchdog.supervisor, "openclaw");
+    assert.equal(metadata.supervision.watchdog.cadence, "1h");
+    const serialized = JSON.stringify(metadata);
+    assert.equal(serialized.includes("alpha-discord-token"), false);
+    assert.equal(serialized.includes("alpha-llm-key"), false);
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }

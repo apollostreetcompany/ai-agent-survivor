@@ -19,10 +19,24 @@ required_vars=(
   AGENT_BRAVO_DISCORD_BOT_ID
   AGENT_CHARLIE_DISCORD_BOT_ID
   AGENT_DELTA_DISCORD_BOT_ID
+  LLM_PROVIDER
+  BENCHMARK_WATCHDOG_SUPERVISOR
+  AGENT_ALPHA_CLOUD_SEAT_PROVIDER
+  AGENT_BRAVO_CLOUD_SEAT_PROVIDER
+  AGENT_CHARLIE_CLOUD_SEAT_PROVIDER
+  AGENT_DELTA_CLOUD_SEAT_PROVIDER
+  AGENT_ALPHA_CLOUD_SEAT_ID
+  AGENT_BRAVO_CLOUD_SEAT_ID
+  AGENT_CHARLIE_CLOUD_SEAT_ID
+  AGENT_DELTA_CLOUD_SEAT_ID
   AGENT_ALPHA_LLM_API_KEY
   AGENT_BRAVO_LLM_API_KEY
   AGENT_CHARLIE_LLM_API_KEY
   AGENT_DELTA_LLM_API_KEY
+  AGENT_ALPHA_LLM_MODEL
+  AGENT_BRAVO_LLM_MODEL
+  AGENT_CHARLIE_LLM_MODEL
+  AGENT_DELTA_LLM_MODEL
   OPENCLAW_DISCORD_TARGET
 )
 
@@ -74,6 +88,19 @@ assert_unique_values \
   "${AGENT_CHARLIE_LLM_API_KEY}" \
   "${AGENT_DELTA_LLM_API_KEY}"
 
-agent_count=$(( ${#PROCESS_NAMES[@]} - 2 ))
+assert_unique_values \
+  "Cloud seat IDs" \
+  "${AGENT_ALPHA_CLOUD_SEAT_ID}" \
+  "${AGENT_BRAVO_CLOUD_SEAT_ID}" \
+  "${AGENT_CHARLIE_CLOUD_SEAT_ID}" \
+  "${AGENT_DELTA_CLOUD_SEAT_ID}"
 
-printf '{"preflight":"ok","agentCount":%s,"openclawTarget":"configured"}\n' "${agent_count}"
+agent_count=$(( ${#PROCESS_NAMES[@]} - 2 ))
+metadata_path="${BENCHMARK_METADATA_PATH:-${RUNTIME_DIR}/run-metadata.json}"
+
+ensure_runtime_dirs
+node "${SCRIPT_DIR}/benchmark-metadata.mjs" --output "${metadata_path}" >/dev/null
+
+printf '{"preflight":"ok","agentCount":%s,"openclawTarget":"configured","metadata":"%s"}\n' \
+  "${agent_count}" \
+  "$(escape_json "${metadata_path}")"
