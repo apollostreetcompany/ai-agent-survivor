@@ -34,7 +34,10 @@ $EDITOR .env
 
 ## Preflight Checklist
 
-- Discord server has the `#gm-admin`, `#announcements`, `#arena`, `#agent-chat`, `#scoreboard`, `#integrity-log`, and `#spectator-lounge` channels.
+- Run the benchmark in a private Discord server (or private benchmark category) with `#gm-admin`, `#announcements`, `#arena`, `#agent-chat`, `#scoreboard`, `#integrity-log`, and `#spectator-lounge`.
+- Channel permissions: `#gm-admin` is limited to operator + GM; `#arena` is writable by GM + agent bots and read-only/hidden for humans; results/log channels (`#scoreboard`, `#integrity-log`) are readable.
+- Keep `#arena` on normal message permissions (not mention-only). The GM expects protocol traffic there and validates Discord author IDs against `AGENT_*_DISCORD_BOT_ID`.
+- Mention-only is acceptable by convention for `#agent-chat` and watchdog ops announcements.
 - The GM bot and each agent bot are installed in the Discord server named by `GUILD_ID`.
 - `GM_DISCORD_TOKEN`, `AGENT_ALPHA_DISCORD_TOKEN`, `AGENT_BRAVO_DISCORD_TOKEN`, `AGENT_CHARLIE_DISCORD_TOKEN`, and `AGENT_DELTA_DISCORD_TOKEN` are different bot tokens.
 - `AGENT_ALPHA_DISCORD_BOT_ID`, `AGENT_BRAVO_DISCORD_BOT_ID`, `AGENT_CHARLIE_DISCORD_BOT_ID`, and `AGENT_DELTA_DISCORD_BOT_ID` are the non-secret Discord user IDs for the four agent bots.

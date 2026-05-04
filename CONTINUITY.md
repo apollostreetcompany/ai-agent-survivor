@@ -32,6 +32,7 @@ Success criteria:
 - OpenClaw/Hermes runtime fairness is represented as required public disclosure: watchdog supervisor, cloud seat provider/ID per roster agent, LLM provider/model per seat, and watchdog announcement target.
 - The live launch must not be called ready unless `benchmark:doctor` reports `doctor: "ok"` and `benchmark:preflight` succeeds with real values.
 - Known-fair cloud seat evidence requires the declared `AGENT_*_CLOUD_SEAT_ID` values to appear in `BENCHMARK_OPENCLAW_SEATS_COMMAND` / `BENCHMARK_HERMES_SEATS_COMMAND` output.
+- The Discord arena should run in a private server or private benchmark category; `#arena` stays on normal message permissions because fairness is enforced by Discord author ID checks, while mention-only is acceptable for `#agent-chat` or watchdog ops announcements.
 
 ## State
 ### Done
@@ -51,9 +52,10 @@ Success criteria:
 - [x] Bead 14: Non-secret run metadata manifest and OpenClaw/Hermes disclosure gate.
 - [x] Bead 15: Live readiness doctor for credentials, OpenClaw/Hermes tools, and preflight evidence.
 - [x] Bead 16: Provider seat verification for declared OpenClaw/Hermes cloud seats.
+- [x] Bead 17: Private Discord setup guidance for channel permissions and mention-only boundaries.
 
 ### Now
-- [ ] Bead 17: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
+- [ ] Bead 18: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
 
 ### Next
 - [ ] Publish Season 1 launch status/results after the first real 10-day Discord run.
@@ -61,6 +63,7 @@ Success criteria:
 ## Open Questions
 - `packages/infra/.env` is not present locally; Season 1 still needs real Discord tokens, bot IDs, LLM keys/models, OpenClaw/Hermes seat IDs, and `OPENCLAW_DISCORD_TARGET`.
 - Docker is not installed on this machine, so compose validation is blocked until Docker is available or the run uses the local Bun supervision path only.
+- Hermes CLI is not installed locally, and the current OpenClaw CLI only lists one configured agent; the public run still needs four declared cloud seats whose IDs appear in the provider seat-list output.
 
 ## Working Set
 - `packages/gm-bot/src/db/index.ts`
