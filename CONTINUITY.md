@@ -36,6 +36,7 @@ Success criteria:
 - `.env.example` must be shell-sourceable after `cp .env.example .env`; command values with spaces must be quoted so the runtime scripts can load the template before secrets are filled.
 - The 10-day runtime should restart crashed Docker services and detect stale local supervised processes, including live PIDs with stale logs and missing heartbeats.
 - `benchmark:preflight` should fail before launch if the GM Discord token cannot see all required private-server channels.
+- `benchmark:preflight` should fail before launch if required GM/agent Discord write permissions are missing on protocol channels.
 - Agents should reject GM-looking Discord protocol messages unless they come from the configured GM bot user ID and an expected GM protocol channel.
 - `benchmark:preflight` calls Discord with each GM/agent token and fails if `/users/@me` does not match the declared bot user ID or if the token cannot read the configured required channel IDs for that bot.
 - All five Discord bot applications must have Message Content intent enabled in the Discord Developer Portal because the GM and agents read message content for arena protocol messages, admin commands, and benchmark signals.
@@ -73,9 +74,10 @@ Success criteria:
 - [x] Bead 25: Discord Developer Mode / Copy ID guidance for private-server setup.
 - [x] Bead 26: Runtime Discord channel ID binding for GM, agents, Docker, and local supervision.
 - [x] Bead 27: Public benchmark start path gated by live readiness doctor and provider seat verification.
+- [x] Bead 28: Discord write-permission preflight gate for GM/agent protocol channels.
 
 ### Now
-- [ ] Bead 28: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
+- [ ] Bead 29: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
 
 ### Next
 - [ ] Publish Season 1 launch status/results after the first real 10-day Discord run.

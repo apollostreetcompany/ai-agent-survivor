@@ -288,8 +288,15 @@
                 configured private Discord channel IDs, every agent token can
                 read its required protocol channels, every GM/agent token
                 matches its declared bot ID, and every OpenClaw/Hermes seat is
-                disclosed. The check uses channel/message read endpoints, not
-                guild channel listing.
+                disclosed. It also confirms GM write permission on
+                <code>#gm-admin</code>, <code>#announcements</code>,
+                <code>#arena</code>, <code>#agent-chat</code>,
+                <code>#scoreboard</code>, and <code>#integrity-log</code>, plus
+                agent write permission on <code>#arena</code> and
+                <code>#agent-chat</code> via Discord
+                <code>POST /channels/{channel.id}/typing</code> (no messages
+                sent). The check uses channel/message read endpoints and
+                typing-write probes, not guild channel listing.
               </p>
             </article>
           </div>

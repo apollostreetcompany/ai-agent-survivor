@@ -229,6 +229,7 @@ async function withDiscordApiServer(
     channelNames = requiredDiscordChannels,
     channelNamesByToken = {},
     userIdsByToken = {},
+    deniedTypingByToken = {},
   } = {},
   callback,
 ) {
@@ -290,6 +291,35 @@ async function withDiscordApiServer(
       } else {
         res.end(JSON.stringify(readableChannel));
       }
+      return;
+    }
+
+    const typingMatch = url.pathname.match(/^\/channels\/([^/]+)\/typing$/);
+    if (typingMatch) {
+      if (req.method !== "POST") {
+        res.statusCode = 405;
+        res.end(JSON.stringify({ error: "typing check must use POST" }));
+        return;
+      }
+
+      const channelId = decodeURIComponent(typingMatch[1]);
+      const channelName = namesByChannelId.get(channelId);
+      const readableChannel = channelsForToken(token).find((channel) => channel.id === channelId);
+      if (!channelName || !readableChannel) {
+        res.statusCode = 403;
+        res.end(JSON.stringify({ error: "missing channel access" }));
+        return;
+      }
+
+      const deniedTypingChannels = deniedTypingByToken[token] || [];
+      if (deniedTypingChannels.includes(channelName)) {
+        res.statusCode = 403;
+        res.end(JSON.stringify({ error: "missing send permissions" }));
+        return;
+      }
+
+      res.statusCode = 204;
+      res.end();
       return;
     }
 
@@ -489,6 +519,34 @@ test("benchmark preflight rejects agent bots missing required channel visibility
           () => runPreflight({ envFile }),
           /agent-bravo cannot read required Discord channels: #agent-chat/,
         );
+      },
+    );
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark preflight rejects Discord write failures while preserving read checks and not printing tokens", async () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-preflight-discord-write-check-"));
+  const envFile = resolve(tempRoot, ".env");
+
+  try {
+    await withDiscordApiServer(
+      {
+        deniedTypingByToken: {
+          "bravo-discord-token": ["agent-chat"],
+        },
+      },
+      async (discordApiBase) => {
+        writeValidBenchmarkEnv(envFile, {
+          BENCHMARK_DISCORD_API_BASE: discordApiBase,
+        });
+
+        const result = await runResult(scripts.preflight, [], { envFile });
+        assert.notEqual(result.status, 0);
+        assert.match(result.stderr, /agent-bravo cannot write required Discord channels: #agent-chat/);
+        assert.equal(result.stderr.includes("bravo-discord-token"), false);
+        assert.equal(result.stdout.includes("bravo-discord-token"), false);
       },
     );
   } finally {
