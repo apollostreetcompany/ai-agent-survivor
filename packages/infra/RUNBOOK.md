@@ -22,7 +22,7 @@ Optional runtime variables:
 | GM narration | `NARRATOR_API_KEY`, `NARRATOR_MODEL` |
 | Mail | `GM_MAIL_PASS`, `AGENT_ALPHA_MAIL_USER`, `AGENT_ALPHA_MAIL_PASS`, `AGENT_BRAVO_MAIL_USER`, `AGENT_BRAVO_MAIL_PASS`, `AGENT_CHARLIE_MAIL_USER`, `AGENT_CHARLIE_MAIL_PASS`, `AGENT_DELTA_MAIL_USER`, `AGENT_DELTA_MAIL_PASS` |
 | Local benchmark | `BENCHMARK_RUNTIME_DIR`, `BENCHMARK_METADATA_PATH`, `SURVIVOR_RUN_ID`, `GAME_DATA_PORT`, `MAX_LOG_AGE_SECONDS`, `MAX_HEALTH_AGE_SECONDS` |
-| Readiness doctor | `BENCHMARK_OPENCLAW_COMMAND`, `BENCHMARK_HERMES_COMMAND`, `BENCHMARK_DOCKER_COMMAND`, `BENCHMARK_REQUIRE_DOCKER` |
+| Readiness doctor | `BENCHMARK_OPENCLAW_COMMAND`, `BENCHMARK_HERMES_COMMAND`, `BENCHMARK_OPENCLAW_SEATS_COMMAND`, `BENCHMARK_HERMES_SEATS_COMMAND`, `BENCHMARK_DOCKER_COMMAND`, `BENCHMARK_REQUIRE_DOCKER` |
 
 Use `.env.example` as the non-secret template:
 
@@ -120,7 +120,7 @@ bun run benchmark:status
 bun run benchmark:stop
 ```
 
-`benchmark:doctor` is the live readiness audit. It checks that `.env` exists, required launch variables are present, declared OpenClaw/Hermes commands are available, optional Docker compose validation is possible, and `benchmark:preflight` succeeds. `benchmark:preflight` verifies the live credential contract before launch: required Discord/LLM/OpenClaw/Hermes variables are present, GM/agent Discord tokens are unique, agent bot user IDs are unique, cloud seat IDs are unique, and agent LLM API keys are unique. It writes a non-secret run manifest to `BENCHMARK_METADATA_PATH` or `BENCHMARK_RUNTIME_DIR/run-metadata.json`; publish this with Season 1 results. `benchmark:start` runs the same preflight, builds the workspace, maps the runbook credentials into each local process (`GM_DISCORD_TOKEN` → GM `DISCORD_TOKEN`, per-agent Discord/LLM keys → agent `DISCORD_TOKEN`/`LLM_API_KEY`), starts a local `/tasks` and `/market-feed` server on `GAME_DATA_PORT`, and writes PID, log, heartbeat, manifest, and status files under `BENCHMARK_RUNTIME_DIR` (default: `packages/infra/.runtime/discord-benchmark`). `benchmark:status` emits JSON status suitable for OpenClaw ingestion.
+`benchmark:doctor` is the live readiness audit. It checks that `.env` exists, required launch variables are present, declared OpenClaw/Hermes commands are available, declared cloud seat IDs appear in the provider seat list output, optional Docker compose validation is possible, and `benchmark:preflight` succeeds. `benchmark:preflight` verifies the live credential contract before launch: required Discord/LLM/OpenClaw/Hermes variables are present, GM/agent Discord tokens are unique, agent bot user IDs are unique, cloud seat IDs are unique, and agent LLM API keys are unique. It writes a non-secret run manifest to `BENCHMARK_METADATA_PATH` or `BENCHMARK_RUNTIME_DIR/run-metadata.json`; publish this with Season 1 results. `benchmark:start` runs the same preflight, builds the workspace, maps the runbook credentials into each local process (`GM_DISCORD_TOKEN` → GM `DISCORD_TOKEN`, per-agent Discord/LLM keys → agent `DISCORD_TOKEN`/`LLM_API_KEY`), starts a local `/tasks` and `/market-feed` server on `GAME_DATA_PORT`, and writes PID, log, heartbeat, manifest, and status files under `BENCHMARK_RUNTIME_DIR` (default: `packages/infra/.runtime/discord-benchmark`). `benchmark:status` emits JSON status suitable for OpenClaw ingestion.
 
 Run watchdog once (or from cron) to restart missing/stale processes:
 

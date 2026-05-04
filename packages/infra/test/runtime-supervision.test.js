@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
@@ -61,6 +61,11 @@ function expectedRuntimeProcesses() {
   return ["game-data", "gm-bot", ...defaultRosterAgentIds()];
 }
 
+function writeExecutable(path, content) {
+  writeFileSync(path, content);
+  chmodSync(path, 0o755);
+}
+
 function writeValidBenchmarkEnv(path, overrides = {}) {
   const values = {
     GUILD_ID: "guild-123",
@@ -97,8 +102,14 @@ function writeValidBenchmarkEnv(path, overrides = {}) {
 
   writeFileSync(
     path,
-    Object.entries(values).map(([key, value]) => `${key}=${value}`).join("\n"),
+    Object.entries(values).map(([key, value]) => `${key}=${shellEnvValue(value)}`).join("\n"),
   );
+}
+
+function shellEnvValue(value) {
+  const stringValue = String(value);
+  if (/^[A-Za-z0-9_./:@-]+$/.test(stringValue)) return stringValue;
+  return `"${stringValue.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
 test("runtime supervision scripts exist and output process JSON without credentials", () => {
@@ -212,13 +223,20 @@ test("benchmark doctor fails when required docker command is missing", () => {
   const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-missing-docker-"));
   const envFile = resolve(tempRoot, ".env");
   const runtimeDir = resolve(tempRoot, "runtime");
+  const openclawSeatsScript = resolve(tempRoot, "openclaw-seats.sh");
+  const hermesSeatsScript = resolve(tempRoot, "hermes-seats.sh");
 
   try {
+    writeExecutable(openclawSeatsScript, "#!/bin/sh\nprintf 'openclaw-alpha\\nopenclaw-bravo\\n'\n");
+    writeExecutable(hermesSeatsScript, "#!/bin/sh\nprintf 'hermes-charlie\\nhermes-delta\\n'\n");
+
     writeValidBenchmarkEnv(envFile, {
       BENCHMARK_REQUIRE_DOCKER: "1",
       BENCHMARK_DOCKER_COMMAND: "docker-does-not-exist",
       BENCHMARK_OPENCLAW_COMMAND: "sh",
       BENCHMARK_HERMES_COMMAND: "sh",
+      BENCHMARK_OPENCLAW_SEATS_COMMAND: openclawSeatsScript,
+      BENCHMARK_HERMES_SEATS_COMMAND: hermesSeatsScript,
     });
 
     const doctor = runDoctor({ envFile, runtimeDir });
@@ -235,11 +253,15 @@ test("benchmark doctor validates OpenClaw/Hermes command availability from env",
   const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-provider-check-"));
   const envFile = resolve(tempRoot, ".env");
   const runtimeDir = resolve(tempRoot, "runtime");
+  const openclawSeatsScript = resolve(tempRoot, "openclaw-seats.sh");
 
   try {
+    writeExecutable(openclawSeatsScript, "#!/bin/sh\nprintf 'openclaw-alpha\\nopenclaw-bravo\\n'\n");
+
     writeValidBenchmarkEnv(envFile, {
       BENCHMARK_OPENCLAW_COMMAND: "sh",
       BENCHMARK_HERMES_COMMAND: "hermes-does-not-exist",
+      BENCHMARK_OPENCLAW_SEATS_COMMAND: openclawSeatsScript,
     });
 
     const doctor = runDoctor({ envFile, runtimeDir });
@@ -247,7 +269,69 @@ test("benchmark doctor validates OpenClaw/Hermes command availability from env",
 
     const report = JSON.parse(doctor.stdout);
     assert.equal(report.checks.some((check) => check.id === "openclaw-command" && check.status === "pass"), true);
+    assert.equal(report.checks.some((check) => check.id === "openclaw-seats" && check.status === "pass"), true);
     assert.equal(report.checks.some((check) => check.id === "hermes-command" && check.status === "fail"), true);
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark doctor fails when declared seat IDs are not in provider command output", () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-seat-mismatch-"));
+  const envFile = resolve(tempRoot, ".env");
+  const runtimeDir = resolve(tempRoot, "runtime");
+  const openclawSeatsScript = resolve(tempRoot, "openclaw-seats.sh");
+  const hermesSeatsScript = resolve(tempRoot, "hermes-seats.sh");
+
+  try {
+    writeExecutable(openclawSeatsScript, "#!/bin/sh\nprintf 'openclaw-alpha\\n'\n");
+    writeExecutable(hermesSeatsScript, "#!/bin/sh\nprintf 'hermes-charlie\\nhermes-delta\\n'\n");
+
+    writeValidBenchmarkEnv(envFile, {
+      BENCHMARK_OPENCLAW_COMMAND: "sh",
+      BENCHMARK_HERMES_COMMAND: "sh",
+      BENCHMARK_OPENCLAW_SEATS_COMMAND: openclawSeatsScript,
+      BENCHMARK_HERMES_SEATS_COMMAND: hermesSeatsScript,
+    });
+
+    const doctor = runDoctor({ envFile, runtimeDir });
+    assert.notEqual(doctor.status, 0);
+
+    const report = JSON.parse(doctor.stdout);
+    assert.equal(report.checks.some((check) => check.id === "openclaw-seats" && check.status === "fail"), true);
+    assert.equal(report.checks.some((check) => check.id === "hermes-seats" && check.status === "pass"), true);
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark doctor accepts seat IDs from temp fake seat command files", () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-seat-fake-command-"));
+  const envFile = resolve(tempRoot, ".env");
+  const runtimeDir = resolve(tempRoot, "runtime");
+  const openclawSeatsScript = resolve(tempRoot, "openclaw-seats.sh");
+  const hermesSeatsScript = resolve(tempRoot, "hermes-seats.sh");
+
+  try {
+    writeExecutable(openclawSeatsScript, "#!/bin/sh\nprintf 'openclaw-alpha\\nopenclaw-bravo\\n'\n");
+    writeExecutable(hermesSeatsScript, "#!/bin/sh\nprintf 'hermes-charlie\\nhermes-delta\\n'\n");
+
+    writeValidBenchmarkEnv(envFile, {
+      BENCHMARK_OPENCLAW_COMMAND: "sh",
+      BENCHMARK_HERMES_COMMAND: "sh",
+      BENCHMARK_OPENCLAW_SEATS_COMMAND: openclawSeatsScript,
+      BENCHMARK_HERMES_SEATS_COMMAND: hermesSeatsScript,
+    });
+
+    const doctor = runDoctor({ envFile, runtimeDir });
+    assert.equal(doctor.status, 0);
+
+    const report = JSON.parse(doctor.stdout);
+    assert.equal(report.checks.some((check) => check.id === "openclaw-seats" && check.status === "pass"), true);
+    assert.equal(report.checks.some((check) => check.id === "hermes-seats" && check.status === "pass"), true);
+    assert.equal(report.doctor, "ok");
+    assert.equal(report.preflight.ok, true);
+    assert.equal(report.metadata.path, resolve(runtimeDir, "run-metadata.json"));
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }
@@ -257,12 +341,19 @@ test("benchmark doctor integrates preflight and never prints secret values", () 
   const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-preflight-"));
   const envFile = resolve(tempRoot, ".env");
   const runtimeDir = resolve(tempRoot, "runtime");
+  const openclawSeatsScript = resolve(tempRoot, "openclaw-seats.sh");
+  const hermesSeatsScript = resolve(tempRoot, "hermes-seats.sh");
 
   try {
+    writeExecutable(openclawSeatsScript, "#!/bin/sh\nprintf 'openclaw-alpha\\nopenclaw-bravo\\n'\n");
+    writeExecutable(hermesSeatsScript, "#!/bin/sh\nprintf 'hermes-charlie\\nhermes-delta\\n'\n");
+
     writeValidBenchmarkEnv(envFile, {
       AGENT_DELTA_DISCORD_TOKEN: "alpha-discord-token",
       BENCHMARK_OPENCLAW_COMMAND: "sh",
       BENCHMARK_HERMES_COMMAND: "sh",
+      BENCHMARK_OPENCLAW_SEATS_COMMAND: openclawSeatsScript,
+      BENCHMARK_HERMES_SEATS_COMMAND: hermesSeatsScript,
     });
 
     const doctor = runDoctor({ envFile, runtimeDir });
@@ -273,32 +364,6 @@ test("benchmark doctor integrates preflight and never prints secret values", () 
     const report = JSON.parse(doctor.stdout);
     assert.equal(report.preflight.ok, false);
     assert.equal(report.checks.some((check) => check.id === "preflight" && check.status === "fail"), true);
-  } finally {
-    rmSync(tempRoot, { recursive: true, force: true });
-  }
-});
-
-test("benchmark doctor passes with complete live readiness evidence", () => {
-  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-ok-"));
-  const envFile = resolve(tempRoot, ".env");
-  const runtimeDir = resolve(tempRoot, "runtime");
-
-  try {
-    writeValidBenchmarkEnv(envFile, {
-      BENCHMARK_OPENCLAW_COMMAND: "sh",
-      BENCHMARK_HERMES_COMMAND: "sh",
-      BENCHMARK_REQUIRE_DOCKER: "false",
-    });
-
-    const doctor = runDoctor({ envFile, runtimeDir });
-    assert.equal(doctor.status, 0);
-
-    const report = JSON.parse(doctor.stdout);
-    assert.equal(report.doctor, "ok");
-    assert.equal(report.preflight.ok, true);
-    assert.equal(report.metadata.path, resolve(runtimeDir, "run-metadata.json"));
-    assert.equal(doctor.stdout.includes("alpha-discord-token"), false);
-    assert.equal(doctor.stdout.includes("alpha-llm-key"), false);
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }

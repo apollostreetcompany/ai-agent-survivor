@@ -98,6 +98,58 @@ function providerCommand(provider, env) {
   return "";
 }
 
+function providerSeatsCommand(provider, env) {
+  if (provider === "openclaw") {
+    return env.BENCHMARK_OPENCLAW_SEATS_COMMAND || `${providerCommand(provider, env)} agents list --bindings`;
+  }
+  if (provider === "hermes") {
+    return env.BENCHMARK_HERMES_SEATS_COMMAND || `${providerCommand(provider, env)} agents list`;
+  }
+  return "";
+}
+
+function parseSeatIds(output) {
+  const text = String(output || "").trim();
+  if (!text) return [];
+
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((entry) => (typeof entry === "string" ? entry : entry?.id || entry?.seatId))
+        .filter((value) => typeof value === "string" && value.trim())
+        .map((value) => value.trim());
+    }
+    if (parsed && typeof parsed === "object" && Array.isArray(parsed.seats)) {
+      return parsed.seats
+        .map((entry) => (typeof entry === "string" ? entry : entry?.id || entry?.seatId))
+        .filter((value) => typeof value === "string" && value.trim())
+        .map((value) => value.trim());
+    }
+  } catch {
+    // Treat as plain text.
+  }
+
+  return text.match(/[A-Za-z0-9][A-Za-z0-9_.:@/-]*/g) || [];
+}
+
+function fetchProviderSeatIds(provider, env) {
+  const command = providerSeatsCommand(provider, env);
+  const result = spawnSync("sh", ["-c", command], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...env,
+    },
+  });
+
+  if (result.status !== 0) {
+    return { ok: false, command };
+  }
+
+  return { ok: true, command, seatIds: parseSeatIds(result.stdout) };
+}
+
 function runPreflight(env) {
   const result = spawnSync("bash", [preflightScript], {
     encoding: "utf8",
@@ -153,6 +205,7 @@ function main() {
 
   const providers = new Set();
   const invalidProviders = [];
+  const declaredSeatIdsByProvider = new Map();
   for (const name of PROVIDER_VARS) {
     if (!env[name]) continue;
     const provider = env[name].toLowerCase();
@@ -161,6 +214,16 @@ function main() {
       continue;
     }
     providers.add(provider);
+  }
+
+  for (const agent of ["ALPHA", "BRAVO", "CHARLIE", "DELTA"]) {
+    const provider = String(env[`AGENT_${agent}_CLOUD_SEAT_PROVIDER`] || "").toLowerCase();
+    const seatId = String(env[`AGENT_${agent}_CLOUD_SEAT_ID`] || "").trim();
+    if (!provider || !seatId || !VALID_PROVIDERS.has(provider)) continue;
+    if (!declaredSeatIdsByProvider.has(provider)) {
+      declaredSeatIdsByProvider.set(provider, new Set());
+    }
+    declaredSeatIdsByProvider.get(provider).add(seatId);
   }
 
   if (invalidProviders.length > 0) {
@@ -180,6 +243,37 @@ function main() {
       addCheck(report, `${provider}-command`, "pass", `${command} command is available`);
     } else {
       addCheck(report, `${provider}-command`, "fail", `${command} command not found for ${provider}`);
+      continue;
+    }
+
+    const declaredSeatIds = [...(declaredSeatIdsByProvider.get(provider) || new Set())];
+    if (declaredSeatIds.length === 0) {
+      addCheck(report, `${provider}-seats`, "warn", `${provider} has no declared seat IDs to verify`);
+      continue;
+    }
+
+    const seats = fetchProviderSeatIds(provider, env);
+    if (!seats.ok) {
+      addCheck(report, `${provider}-seats`, "fail", `${provider} seat list command failed`);
+      continue;
+    }
+
+    const availableSeatIds = new Set(seats.seatIds);
+    const missingSeatIds = declaredSeatIds.filter((seatId) => !availableSeatIds.has(seatId));
+    if (missingSeatIds.length > 0) {
+      addCheck(
+        report,
+        `${provider}-seats`,
+        "fail",
+        `${provider} missing declared seat IDs: ${missingSeatIds.sort().join(", ")}`,
+      );
+    } else {
+      addCheck(
+        report,
+        `${provider}-seats`,
+        "pass",
+        `${provider} declared seat IDs verified (${declaredSeatIds.length})`,
+      );
     }
   }
 
