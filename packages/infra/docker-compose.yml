@@ -35,6 +35,7 @@ services:
     environment:
       AGENT_ID: agent-alpha
       DISCORD_TOKEN: ${AGENT_ALPHA_DISCORD_TOKEN:-}
+      GM_DISCORD_BOT_ID: ${GM_DISCORD_BOT_ID:-}
       GUILD_ID: ${GUILD_ID:-}
       LLM_API_KEY: ${AGENT_ALPHA_LLM_API_KEY:-}
       LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
@@ -63,6 +64,7 @@ services:
     environment:
       AGENT_ID: agent-bravo
       DISCORD_TOKEN: ${AGENT_BRAVO_DISCORD_TOKEN:-}
+      GM_DISCORD_BOT_ID: ${GM_DISCORD_BOT_ID:-}
       GUILD_ID: ${GUILD_ID:-}
       LLM_API_KEY: ${AGENT_BRAVO_LLM_API_KEY:-}
       LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
@@ -91,6 +93,7 @@ services:
     environment:
       AGENT_ID: agent-charlie
       DISCORD_TOKEN: ${AGENT_CHARLIE_DISCORD_TOKEN:-}
+      GM_DISCORD_BOT_ID: ${GM_DISCORD_BOT_ID:-}
       GUILD_ID: ${GUILD_ID:-}
       LLM_API_KEY: ${AGENT_CHARLIE_LLM_API_KEY:-}
       LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
@@ -119,6 +122,7 @@ services:
     environment:
       AGENT_ID: agent-delta
       DISCORD_TOKEN: ${AGENT_DELTA_DISCORD_TOKEN:-}
+      GM_DISCORD_BOT_ID: ${GM_DISCORD_BOT_ID:-}
       GUILD_ID: ${GUILD_ID:-}
       LLM_API_KEY: ${AGENT_DELTA_LLM_API_KEY:-}
       LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}

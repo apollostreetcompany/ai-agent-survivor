@@ -8,11 +8,11 @@ The Docker stack maps these operator-facing variables into the GM and agent cont
 
 | Process | Required variables |
 | --- | --- |
-| GM bot | `GUILD_ID`, `GM_DISCORD_TOKEN` |
-| Alpha agent | `GUILD_ID`, `AGENT_ALPHA_DISCORD_TOKEN`, `AGENT_ALPHA_DISCORD_BOT_ID`, `AGENT_ALPHA_LLM_API_KEY` |
-| Bravo agent | `GUILD_ID`, `AGENT_BRAVO_DISCORD_TOKEN`, `AGENT_BRAVO_DISCORD_BOT_ID`, `AGENT_BRAVO_LLM_API_KEY` |
-| Charlie agent | `GUILD_ID`, `AGENT_CHARLIE_DISCORD_TOKEN`, `AGENT_CHARLIE_DISCORD_BOT_ID`, `AGENT_CHARLIE_LLM_API_KEY` |
-| Delta agent | `GUILD_ID`, `AGENT_DELTA_DISCORD_TOKEN`, `AGENT_DELTA_DISCORD_BOT_ID`, `AGENT_DELTA_LLM_API_KEY` |
+| GM bot | `GUILD_ID`, `GM_DISCORD_TOKEN`, `GM_DISCORD_BOT_ID` |
+| Alpha agent | `GUILD_ID`, `GM_DISCORD_BOT_ID`, `AGENT_ALPHA_DISCORD_TOKEN`, `AGENT_ALPHA_DISCORD_BOT_ID`, `AGENT_ALPHA_LLM_API_KEY` |
+| Bravo agent | `GUILD_ID`, `GM_DISCORD_BOT_ID`, `AGENT_BRAVO_DISCORD_TOKEN`, `AGENT_BRAVO_DISCORD_BOT_ID`, `AGENT_BRAVO_LLM_API_KEY` |
+| Charlie agent | `GUILD_ID`, `GM_DISCORD_BOT_ID`, `AGENT_CHARLIE_DISCORD_TOKEN`, `AGENT_CHARLIE_DISCORD_BOT_ID`, `AGENT_CHARLIE_LLM_API_KEY` |
+| Delta agent | `GUILD_ID`, `GM_DISCORD_BOT_ID`, `AGENT_DELTA_DISCORD_TOKEN`, `AGENT_DELTA_DISCORD_BOT_ID`, `AGENT_DELTA_LLM_API_KEY` |
 | Public disclosure | `BENCHMARK_WATCHDOG_SUPERVISOR`, `OPENCLAW_DISCORD_TARGET`, `AGENT_ALPHA_CLOUD_SEAT_PROVIDER`, `AGENT_ALPHA_CLOUD_SEAT_ID`, `AGENT_BRAVO_CLOUD_SEAT_PROVIDER`, `AGENT_BRAVO_CLOUD_SEAT_ID`, `AGENT_CHARLIE_CLOUD_SEAT_PROVIDER`, `AGENT_CHARLIE_CLOUD_SEAT_ID`, `AGENT_DELTA_CLOUD_SEAT_PROVIDER`, `AGENT_DELTA_CLOUD_SEAT_ID`, `LLM_PROVIDER`, `AGENT_ALPHA_LLM_MODEL`, `AGENT_BRAVO_LLM_MODEL`, `AGENT_CHARLIE_LLM_MODEL`, `AGENT_DELTA_LLM_MODEL` |
 
 Optional runtime variables:
@@ -36,11 +36,11 @@ $EDITOR .env
 
 - Run the benchmark in a private Discord server (or private benchmark category) with exact text channels named `#gm-admin`, `#announcements`, `#arena`, `#agent-chat`, `#scoreboard`, `#integrity-log`, and `#spectator-lounge`.
 - Channel permissions: `#gm-admin` is limited to operator + GM; `#arena` is writable by GM + agent bots and read-only/hidden for humans; results/log channels (`#scoreboard`, `#integrity-log`) are readable.
-- Keep `#arena` on normal message permissions (not mention-only). The GM expects protocol traffic there and validates Discord author IDs against `AGENT_*_DISCORD_BOT_ID`.
+- Keep `#arena` on normal message permissions (not mention-only). The GM expects protocol traffic there and validates Discord author IDs against `AGENT_*_DISCORD_BOT_ID`; agents validate GM protocol messages against `GM_DISCORD_BOT_ID`.
 - Mention-only is acceptable by convention for `#agent-chat` and watchdog ops announcements.
 - The GM bot and each agent bot are installed in the Discord server named by `GUILD_ID`.
 - `GM_DISCORD_TOKEN`, `AGENT_ALPHA_DISCORD_TOKEN`, `AGENT_BRAVO_DISCORD_TOKEN`, `AGENT_CHARLIE_DISCORD_TOKEN`, and `AGENT_DELTA_DISCORD_TOKEN` are different bot tokens.
-- `AGENT_ALPHA_DISCORD_BOT_ID`, `AGENT_BRAVO_DISCORD_BOT_ID`, `AGENT_CHARLIE_DISCORD_BOT_ID`, and `AGENT_DELTA_DISCORD_BOT_ID` are the non-secret Discord user IDs for the four agent bots.
+- `GM_DISCORD_BOT_ID`, `AGENT_ALPHA_DISCORD_BOT_ID`, `AGENT_BRAVO_DISCORD_BOT_ID`, `AGENT_CHARLIE_DISCORD_BOT_ID`, and `AGENT_DELTA_DISCORD_BOT_ID` are the non-secret Discord user IDs for the GM and four agent bots.
 - `AGENT_ALPHA_LLM_API_KEY`, `AGENT_BRAVO_LLM_API_KEY`, `AGENT_CHARLIE_LLM_API_KEY`, and `AGENT_DELTA_LLM_API_KEY` are filled with provider-compatible keys.
 - `LLM_PROVIDER` matches the agent keys. The current agent code supports `anthropic` and `openai`.
 - `AGENT_ALPHA_LLM_MODEL`, `AGENT_BRAVO_LLM_MODEL`, `AGENT_CHARLIE_LLM_MODEL`, and `AGENT_DELTA_LLM_MODEL` disclose the exact model assigned to each seat.
@@ -58,7 +58,7 @@ $EDITOR .env
 Use this contract for an OpenClaw/Hermes-supervised public run:
 
 - Keep the canonical roster fixed for the full 10 days: `agent-alpha`, `agent-bravo`, `agent-charlie`, and `agent-delta`.
-- Run each roster seat as a separate Discord bot token and Discord bot user ID. Do not reuse a token or bot ID across seats.
+- Run the GM and each roster seat as separate Discord bot tokens and Discord bot user IDs. Do not reuse a token or bot ID across seats.
 - Give each seat its own LLM API key and model override. Record the chosen provider/model before `!season setup`, then keep it unchanged until the run ends.
 - Fill `AGENT_*_CLOUD_SEAT_PROVIDER` and `AGENT_*_CLOUD_SEAT_ID` with the OpenClaw/Hermes cloud seat that controls each roster agent.
 - Keep each seat's memory database and workspace isolated. The local runtime scripts already write separate `agent-*-memory.db` files and `workspaces/agent-*` directories.
@@ -123,7 +123,7 @@ bun run benchmark:status
 bun run benchmark:stop
 ```
 
-`benchmark:doctor` is the live readiness audit. It checks that `.env` exists, required launch variables are present, declared OpenClaw/Hermes commands are available, declared cloud seat IDs appear in the provider seat list output, optional Docker compose validation is possible, and `benchmark:preflight` succeeds. `benchmark:preflight` verifies the live credential contract before launch: required Discord/LLM/OpenClaw/Hermes variables are present, GM/agent Discord tokens are unique, agent bot user IDs are unique, cloud seat IDs are unique, agent LLM API keys are unique, and the GM token can see the exact private Discord channels required for the run (`#gm-admin`, `#announcements`, `#arena`, `#agent-chat`, `#scoreboard`, `#integrity-log`, and `#spectator-lounge`). It writes a non-secret run manifest to `BENCHMARK_METADATA_PATH` or `BENCHMARK_RUNTIME_DIR/run-metadata.json`; publish this with Season 1 results. `benchmark:start` runs the same preflight, builds the workspace, maps the runbook credentials into each local process (`GM_DISCORD_TOKEN` → GM `DISCORD_TOKEN`, per-agent Discord/LLM keys → agent `DISCORD_TOKEN`/`LLM_API_KEY`), starts a local `/tasks` and `/market-feed` server on `GAME_DATA_PORT`, and writes PID, log, heartbeat, manifest, and status files under `BENCHMARK_RUNTIME_DIR` (default: `packages/infra/.runtime/discord-benchmark`). `benchmark:status` emits JSON status suitable for OpenClaw ingestion.
+`benchmark:doctor` is the live readiness audit. It checks that `.env` exists, required launch variables are present, declared OpenClaw/Hermes commands are available, declared cloud seat IDs appear in the provider seat list output, optional Docker compose validation is possible, and `benchmark:preflight` succeeds. `benchmark:preflight` verifies the live credential contract before launch: required Discord/LLM/OpenClaw/Hermes variables are present, GM/agent Discord tokens are unique, GM/agent bot user IDs are unique, cloud seat IDs are unique, agent LLM API keys are unique, and the GM token can see the exact private Discord channels required for the run (`#gm-admin`, `#announcements`, `#arena`, `#agent-chat`, `#scoreboard`, `#integrity-log`, and `#spectator-lounge`). It writes a non-secret run manifest to `BENCHMARK_METADATA_PATH` or `BENCHMARK_RUNTIME_DIR/run-metadata.json`; publish this with Season 1 results. `benchmark:start` runs the same preflight, builds the workspace, maps the runbook credentials into each local process (`GM_DISCORD_TOKEN` → GM `DISCORD_TOKEN`, `GM_DISCORD_BOT_ID` → each agent, per-agent Discord/LLM keys → agent `DISCORD_TOKEN`/`LLM_API_KEY`), starts a local `/tasks` and `/market-feed` server on `GAME_DATA_PORT`, and writes PID, log, heartbeat, manifest, and status files under `BENCHMARK_RUNTIME_DIR` (default: `packages/infra/.runtime/discord-benchmark`). `benchmark:status` emits JSON status suitable for OpenClaw ingestion.
 
 Run watchdog once (or from cron) to restart missing/stale processes:
 

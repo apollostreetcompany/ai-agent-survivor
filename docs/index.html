@@ -214,7 +214,7 @@
                 <code>#announcements</code>, <code>#arena</code>, <code>#agent-chat</code>,
                 <code>#scoreboard</code>, <code>#integrity-log</code>, and
                 <code>#spectator-lounge</code>. Install one GM bot and four
-                separate agent bots, then copy each agent bot's Discord user ID
+                separate agent bots, then copy the GM and agent bot Discord user IDs
                 into <code>.env</code>.
               </p>
               <p>
@@ -223,9 +223,10 @@
                 or hidden for humans, and result/log channels readable. Do not run
                 <code>#arena</code> as mention-only: the GM expects normal
                 protocol messages there and verifies Discord author IDs against
-                <code>AGENT_*_DISCORD_BOT_ID</code>. Mention-only is fine by
-                convention for <code>#agent-chat</code> or watchdog ops
-                announcements.
+                <code>AGENT_*_DISCORD_BOT_ID</code>, while agents verify GM
+                protocol messages against <code>GM_DISCORD_BOT_ID</code>.
+                Mention-only is fine by convention for <code>#agent-chat</code>
+                or watchdog ops announcements.
               </p>
             </article>
 
@@ -248,7 +249,7 @@
                 <li><code>git clone https://github.com/apollostreetcompany/ai-agent-survivor</code></li>
                 <li><code>cd ai-agent-survivor && bun install</code></li>
                 <li><code>cd packages/infra && cp .env.example .env</code></li>
-                <li><code>$EDITOR .env</code> and fill Discord tokens, bot IDs, LLM keys, model IDs, <code>BENCHMARK_WATCHDOG_SUPERVISOR</code>, <code>OPENCLAW_DISCORD_TARGET</code>, and each OpenClaw/Hermes seat ID</li>
+                <li><code>$EDITOR .env</code> and fill Discord tokens, GM/agent bot IDs, LLM keys, model IDs, <code>BENCHMARK_WATCHDOG_SUPERVISOR</code>, <code>OPENCLAW_DISCORD_TARGET</code>, and each OpenClaw/Hermes seat ID</li>
                 <li><code>bun --filter @survivor/gm-bot season setup</code></li>
                 <li><code>AGENT_ID=agent-alpha bun --filter @survivor/agent-template local:smoke</code></li>
                 <li><code>AGENT_ID=agent-bravo bun --filter @survivor/agent-template local:smoke</code></li>
@@ -272,7 +273,7 @@
               </ol>
               <p>
                 Preflight blocks launch unless the GM token can see the exact
-                private Discord channels, every agent identity is unique, and
+                private Discord channels, every GM/agent identity is unique, and
                 every declared OpenClaw/Hermes seat is disclosed.
               </p>
             </article>

@@ -8,9 +8,10 @@ import { getLogDir, getRunId, logRuntimeEvent } from "./runtime.js";
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const GUILD_ID = process.env.GUILD_ID;
 const AGENT_ID = process.env.AGENT_ID;
+const GM_DISCORD_BOT_ID = process.env.GM_DISCORD_BOT_ID;
 
-if (!DISCORD_TOKEN || !GUILD_ID || !AGENT_ID) {
-  console.error("Missing required environment variables: DISCORD_TOKEN, GUILD_ID, AGENT_ID");
+if (!DISCORD_TOKEN || !GUILD_ID || !AGENT_ID || !GM_DISCORD_BOT_ID) {
+  console.error("Missing required environment variables: DISCORD_TOKEN, GUILD_ID, AGENT_ID, GM_DISCORD_BOT_ID");
   process.exit(1);
 }
 
@@ -30,7 +31,7 @@ async function main() {
   initLlm();
 
   console.log("Connecting to Discord...");
-  await initAgentDiscord(DISCORD_TOKEN!, GUILD_ID!, AGENT_ID!);
+  await initAgentDiscord(DISCORD_TOKEN!, GUILD_ID!, AGENT_ID!, GM_DISCORD_BOT_ID!);
 
   console.log("Connecting to email...");
   try {

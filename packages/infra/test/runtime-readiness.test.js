@@ -12,6 +12,7 @@ const envExamplePath = resolve(infraRoot, ".env.example");
 const requiredEnvVars = [
   "GUILD_ID",
   "GM_DISCORD_TOKEN",
+  "GM_DISCORD_BOT_ID",
   "AGENT_ALPHA_DISCORD_TOKEN",
   "AGENT_BRAVO_DISCORD_TOKEN",
   "AGENT_CHARLIE_DISCORD_TOKEN",

@@ -18,6 +18,11 @@ let client: Client;
 let guild: Guild;
 let agentId: string | undefined;
 const channelCache = new Map<string, TextChannel>();
+const GM_PROTOCOL_CHANNELS = [
+  CHANNELS.ANNOUNCEMENTS,
+  CHANNELS.ARENA,
+  CHANNELS.SCOREBOARD,
+];
 
 export type AgentMessageTransport = (
   encodedMessage: string,
@@ -28,6 +33,39 @@ let injectedAgentMessageTransport: AgentMessageTransport | undefined;
 
 export type GmMessageHandler = (msg: GmMessage) => Promise<void>;
 const handlers: GmMessageHandler[] = [];
+
+export type IncomingDiscordMessage = {
+  content: string;
+  authorId: string;
+  channelId?: string;
+  selfUserId?: string;
+  gmDiscordBotId: string;
+  allowedChannelIds?: Iterable<string>;
+};
+
+export function parseTrustedGmMessage({
+  content,
+  authorId,
+  channelId,
+  selfUserId,
+  gmDiscordBotId,
+  allowedChannelIds,
+}: IncomingDiscordMessage): GmMessage | null {
+  const trustedGmDiscordBotId = gmDiscordBotId.trim();
+  if (!trustedGmDiscordBotId) {
+    throw new Error("GM Discord bot user ID is required to authenticate GM protocol messages.");
+  }
+
+  if (authorId === selfUserId) return null;
+  if (authorId !== trustedGmDiscordBotId) return null;
+  if (allowedChannelIds && (!channelId || !new Set(allowedChannelIds).has(channelId))) return null;
+
+  const parsed = parseMessage(content);
+  if (!parsed) return null;
+
+  if (!("tag" in parsed) || !(parsed.tag as string).startsWith("GM:")) return null;
+  return parsed as GmMessage;
+}
 
 /** Register a handler for GM messages */
 export function onGmMessage(handler: GmMessageHandler): void {
@@ -54,8 +92,13 @@ export async function initAgentDiscord(
   token: string,
   guildId: string,
   id: string,
+  gmDiscordBotId: string,
 ): Promise<Client> {
   agentId = id;
+  const trustedGmDiscordBotId = gmDiscordBotId.trim();
+  if (!trustedGmDiscordBotId) {
+    throw new Error("GM Discord bot user ID is required to authenticate GM protocol messages.");
+  }
 
   client = new Client({
     intents: [
@@ -86,19 +129,28 @@ export async function initAgentDiscord(
     if (ch) channelCache.set(name, ch);
   }
 
+  const missingProtocolChannels = GM_PROTOCOL_CHANNELS.filter((name) => !channelCache.has(name));
+  if (missingProtocolChannels.length > 0) {
+    throw new Error(`Missing required Discord channels for agent: ${missingProtocolChannels.join(", ")}`);
+  }
+
   // Listen for GM messages
   client.on("messageCreate", async (message: Message) => {
-    if (message.author.id === client.user?.id) return;
-
-    const parsed = parseMessage(message.content);
+    const parsed = parseTrustedGmMessage({
+      content: message.content,
+      authorId: message.author.id,
+      channelId: message.channelId,
+      selfUserId: client.user?.id,
+      gmDiscordBotId: trustedGmDiscordBotId,
+      allowedChannelIds: GM_PROTOCOL_CHANNELS
+        .map((name) => channelCache.get(name)?.id)
+        .filter((id): id is string => Boolean(id)),
+    });
     if (!parsed) return;
-
-    // Only handle GM messages
-    if (!("tag" in parsed) || !(parsed.tag as string).startsWith("GM:")) return;
 
     for (const handler of handlers) {
       try {
-        await handler(parsed as GmMessage);
+        await handler(parsed);
       } catch (err) {
         console.error(`Handler error for ${parsed.tag}:`, err);
       }

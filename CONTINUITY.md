@@ -36,6 +36,7 @@ Success criteria:
 - `.env.example` must be shell-sourceable after `cp .env.example .env`; command values with spaces must be quoted so the runtime scripts can load the template before secrets are filled.
 - The 10-day runtime should restart crashed Docker services and detect stale local supervised processes, including live PIDs with stale logs and missing heartbeats.
 - `benchmark:preflight` should fail before launch if the GM Discord token cannot see all required private-server channels.
+- Agents should reject GM-looking Discord protocol messages unless they come from the configured GM bot user ID and an expected GM protocol channel.
 
 ## State
 ### Done
@@ -59,15 +60,16 @@ Success criteria:
 - [x] Bead 18: Shell-sourceable benchmark env template with regression coverage.
 - [x] Bead 19: 10-day runtime hardening for Docker restart policies, game-data healthcheck, and watchdog stale detection.
 - [x] Bead 20: Discord channel preflight gate for private-server launch readiness.
+- [x] Bead 21: Discord GM-message authenticity gate for agent runtime and launch preflight.
 
 ### Now
-- [ ] Bead 21: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
+- [ ] Bead 22: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
 
 ### Next
 - [ ] Publish Season 1 launch status/results after the first real 10-day Discord run.
 
 ## Open Questions
-- `packages/infra/.env` is present locally from `.env.example`; Season 1 still needs real Discord tokens, bot IDs, LLM keys/models, OpenClaw/Hermes seat IDs, and `OPENCLAW_DISCORD_TARGET`.
+- `packages/infra/.env` is present locally from `.env.example`; Season 1 still needs real Discord tokens, GM/agent bot IDs, LLM keys/models, OpenClaw/Hermes seat IDs, and `OPENCLAW_DISCORD_TARGET`.
 - Docker is not installed on this machine, so compose validation is blocked until Docker is available or the run uses the local Bun supervision path only.
 - Hermes CLI is not installed locally, and the current OpenClaw CLI only lists one configured agent; the public run still needs four declared cloud seats whose IDs appear in the provider seat-list output.
 

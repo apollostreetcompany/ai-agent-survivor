@@ -72,9 +72,13 @@ function buildMetadata() {
       canonicalRoster: true,
       cleanDayOneReset: true,
       uniqueDiscordBotTokensRequired: true,
+      gmDiscordAuthorBindingRequired: true,
       discordAuthorBindingRequired: true,
       isolatedMemoryAndWorkspaceRequired: true,
       noMidRunCredentialModelPromptOrCodeChangesWithoutDisclosure: true,
+    },
+    discord: {
+      gmBotId: requireEnv("GM_DISCORD_BOT_ID"),
     },
     supervision: {
       watchdog: {

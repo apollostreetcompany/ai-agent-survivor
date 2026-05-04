@@ -101,6 +101,16 @@ test("gm-bot receives Discord bot IDs for live agent identity checks", () => {
   assert.match(gmBlock, /AGENT_DELTA_DISCORD_BOT_ID:\s+\$\{AGENT_DELTA_DISCORD_BOT_ID:-\}/);
 });
 
+test("agent services receive the GM Discord bot ID for GM-message authentication", () => {
+  const compose = read(composePath);
+  const services = topLevelSection(compose, "services");
+
+  for (const agentId of defaultRosterAgentIds()) {
+    const block = serviceBlock(services, agentId);
+    assert.match(block, /GM_DISCORD_BOT_ID:\s+\$\{GM_DISCORD_BOT_ID:-\}/);
+  }
+});
+
 test("runtime services use restart policies for 10-day runtime hardening", () => {
   const compose = read(composePath);
   const services = topLevelSection(compose, "services");

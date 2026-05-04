@@ -11,6 +11,7 @@ load_env_if_present
 required_vars=(
   GUILD_ID
   GM_DISCORD_TOKEN
+  GM_DISCORD_BOT_ID
   AGENT_ALPHA_DISCORD_TOKEN
   AGENT_BRAVO_DISCORD_TOKEN
   AGENT_CHARLIE_DISCORD_TOKEN
@@ -96,6 +97,7 @@ assert_unique_values \
 
 assert_unique_values \
   "Discord bot user IDs" \
+  "${GM_DISCORD_BOT_ID}" \
   "${AGENT_ALPHA_DISCORD_BOT_ID}" \
   "${AGENT_BRAVO_DISCORD_BOT_ID}" \
   "${AGENT_CHARLIE_DISCORD_BOT_ID}" \

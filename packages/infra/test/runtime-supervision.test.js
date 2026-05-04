@@ -125,6 +125,7 @@ function writeValidBenchmarkEnv(path, overrides = {}) {
   const values = {
     GUILD_ID: "guild-123",
     GM_DISCORD_TOKEN: "gm-token",
+    GM_DISCORD_BOT_ID: "gm-discord-bot",
     AGENT_ALPHA_DISCORD_TOKEN: "alpha-discord-token",
     AGENT_BRAVO_DISCORD_TOKEN: "bravo-discord-token",
     AGENT_CHARLIE_DISCORD_TOKEN: "charlie-discord-token",
@@ -247,6 +248,24 @@ test("benchmark preflight rejects duplicate identity credentials", () => {
     assert.throws(
       () => run(scripts.preflight, [], { envFile }),
       /Discord bot tokens must be unique/,
+    );
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark preflight rejects duplicate GM and agent Discord bot user IDs", () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-preflight-duplicate-gm-id-"));
+  const envFile = resolve(tempRoot, ".env");
+
+  try {
+    writeValidBenchmarkEnv(envFile, {
+      AGENT_ALPHA_DISCORD_BOT_ID: "gm-discord-bot",
+    });
+
+    assert.throws(
+      () => run(scripts.preflight, [], { envFile }),
+      /Discord bot user IDs must be unique/,
     );
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
@@ -517,6 +536,8 @@ test("benchmark preflight passes with complete known-fair launch credentials", a
         ["openclaw", "openclaw", "hermes", "hermes"],
       );
       assert.equal(metadata.agents[0].cloudSeatId, "openclaw-alpha");
+      assert.equal(metadata.discord.gmBotId, "gm-discord-bot");
+      assert.equal(metadata.fairnessContract.gmDiscordAuthorBindingRequired, true);
       assert.equal(metadata.agents[0].llmProvider, "anthropic");
       assert.equal(metadata.agents[0].llmModel, "claude-alpha");
       assert.equal(metadata.supervision.watchdog.supervisor, "openclaw");
@@ -583,6 +604,7 @@ test("scripts map runbook credentials into workspace dev commands", () => {
   assert.match(common, /DISCORD_TOKEN="\$\{GM_DISCORD_TOKEN:-\}"/);
   assert.match(common, /AGENT_ALPHA_DISCORD_BOT_ID="\$\{AGENT_ALPHA_DISCORD_BOT_ID:-\}"/);
   assert.match(common, /DISCORD_TOKEN="\$\{AGENT_ALPHA_DISCORD_TOKEN:-\}"/);
+  assert.match(common, /GM_DISCORD_BOT_ID="\$\{GM_DISCORD_BOT_ID:-\}"/);
   assert.match(common, /LLM_API_KEY="\$\{AGENT_ALPHA_LLM_API_KEY:-\}"/);
   assert.match(common, /node packages\/infra\/scripts\/game-data-server\.mjs/);
   assert.match(common, /SURVIVOR_HEALTH_FILE="\$\{BENCHMARK_RUNTIME_DIR\}\/health\/agent-alpha\.heartbeat"/);
