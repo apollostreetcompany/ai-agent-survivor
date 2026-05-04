@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
@@ -121,4 +122,21 @@ test("env example preserves the required non-secret runtime keys", () => {
   for (const envVar of optionalEnvVars) {
     assert.match(envExample, new RegExp(`^${envVar}=`, "m"), `${envVar} must be in .env.example`);
   }
+});
+
+test("env example is shell-sourceable by runtime scripts", () => {
+  const command = [
+    "set -euo pipefail",
+    "set -a",
+    `source ${JSON.stringify(envExamplePath)}`,
+    "set +a",
+    'test "$BENCHMARK_OPENCLAW_SEATS_COMMAND" = "openclaw agents list --bindings"',
+    'test "$BENCHMARK_HERMES_SEATS_COMMAND" = "hermes agents list"',
+  ].join("; ");
+
+  const result = spawnSync("bash", ["-lc", command], {
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
 });
