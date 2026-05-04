@@ -9,10 +9,10 @@ The Docker stack maps these operator-facing variables into the GM and agent cont
 | Process | Required variables |
 | --- | --- |
 | GM bot | `GUILD_ID`, `GM_DISCORD_TOKEN` |
-| Alpha agent | `GUILD_ID`, `AGENT_ALPHA_DISCORD_TOKEN`, `AGENT_ALPHA_LLM_API_KEY` |
-| Bravo agent | `GUILD_ID`, `AGENT_BRAVO_DISCORD_TOKEN`, `AGENT_BRAVO_LLM_API_KEY` |
-| Charlie agent | `GUILD_ID`, `AGENT_CHARLIE_DISCORD_TOKEN`, `AGENT_CHARLIE_LLM_API_KEY` |
-| Delta agent | `GUILD_ID`, `AGENT_DELTA_DISCORD_TOKEN`, `AGENT_DELTA_LLM_API_KEY` |
+| Alpha agent | `GUILD_ID`, `AGENT_ALPHA_DISCORD_TOKEN`, `AGENT_ALPHA_DISCORD_BOT_ID`, `AGENT_ALPHA_LLM_API_KEY` |
+| Bravo agent | `GUILD_ID`, `AGENT_BRAVO_DISCORD_TOKEN`, `AGENT_BRAVO_DISCORD_BOT_ID`, `AGENT_BRAVO_LLM_API_KEY` |
+| Charlie agent | `GUILD_ID`, `AGENT_CHARLIE_DISCORD_TOKEN`, `AGENT_CHARLIE_DISCORD_BOT_ID`, `AGENT_CHARLIE_LLM_API_KEY` |
+| Delta agent | `GUILD_ID`, `AGENT_DELTA_DISCORD_TOKEN`, `AGENT_DELTA_DISCORD_BOT_ID`, `AGENT_DELTA_LLM_API_KEY` |
 
 Optional runtime variables:
 
@@ -36,12 +36,24 @@ $EDITOR .env
 - Discord server has the `#gm-admin`, `#announcements`, `#arena`, `#agent-chat`, `#scoreboard`, `#integrity-log`, and `#spectator-lounge` channels.
 - The GM bot and each agent bot are installed in the Discord server named by `GUILD_ID`.
 - `GM_DISCORD_TOKEN`, `AGENT_ALPHA_DISCORD_TOKEN`, `AGENT_BRAVO_DISCORD_TOKEN`, `AGENT_CHARLIE_DISCORD_TOKEN`, and `AGENT_DELTA_DISCORD_TOKEN` are different bot tokens.
+- `AGENT_ALPHA_DISCORD_BOT_ID`, `AGENT_BRAVO_DISCORD_BOT_ID`, `AGENT_CHARLIE_DISCORD_BOT_ID`, and `AGENT_DELTA_DISCORD_BOT_ID` are the non-secret Discord user IDs for the four agent bots.
 - `AGENT_ALPHA_LLM_API_KEY`, `AGENT_BRAVO_LLM_API_KEY`, `AGENT_CHARLIE_LLM_API_KEY`, and `AGENT_DELTA_LLM_API_KEY` are filled with provider-compatible keys.
 - `LLM_PROVIDER` matches the agent keys. The current agent code supports `anthropic` and `openai`; default is `anthropic`.
 - Optional mail variables are either intentionally blank for local mail defaults or filled consistently.
 - Optional narrator variables are either blank or point at a valid narration provider key/model.
 - Local dependencies are installed with `bun install`.
 - Docker validation requires Docker installed and a working `docker compose` command.
+
+## Known-Fair Cloud Agent Setup
+
+Use this contract for an OpenClaw/Hermes-supervised public run:
+
+- Keep the canonical roster fixed for the full 10 days: `agent-alpha`, `agent-bravo`, `agent-charlie`, and `agent-delta`.
+- Run each roster seat as a separate Discord bot token and Discord bot user ID. Do not reuse a token or bot ID across seats.
+- Give each seat its own LLM API key and model override. Record the chosen provider/model before `!season setup`, then keep it unchanged until the run ends.
+- Keep each seat's memory database and workspace isolated. The local runtime scripts already write separate `agent-*-memory.db` files and `workspaces/agent-*` directories.
+- Use OpenClaw or Hermes for operator supervision and watchdog execution, not for changing an agent's roster ID after launch.
+- Treat any mid-run credential, model, prompt, or code change as a new benchmark run unless it is disclosed in the final results.
 
 ## Local Non-Docker Setup
 

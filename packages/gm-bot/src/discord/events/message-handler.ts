@@ -3,6 +3,7 @@ import { parseMessage, CHANNELS, type AgentMessage } from "@survivor/shared";
 import { getChannel } from "../client.js";
 import { handleAgentProtocolMessage } from "./agent-protocol-handler.js";
 import { handleGmAdminCommand } from "./gm-admin-command-handler.js";
+import { assertAgentDiscordAuthor } from "../../engine/roster.js";
 import { recordDiscordAudit } from "../../ops/runtime.js";
 
 export type MessageCallback = (msg: AgentMessage, raw: Message) => Promise<void>;
@@ -39,6 +40,28 @@ export async function handleMessage(message: Message): Promise<void> {
   // Only handle agent messages
   if (!("agentId" in parsed)) return;
   const agentMsg = parsed as AgentMessage;
+  const receivedAt = Date.now();
+
+  try {
+    assertAgentDiscordAuthor(agentMsg.agentId, message.author.id);
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    recordDiscordAudit({
+      channelName: CHANNELS.ARENA,
+      direction: "inbound",
+      messageTag: agentMsg.tag,
+      agentId: agentMsg.agentId,
+      status: "failed",
+      contentPreview: message.content,
+      error,
+    });
+
+    const integrityChannel = getChannel(CHANNELS.INTEGRITY_LOG);
+    if (integrityChannel) {
+      await integrityChannel.send(`**AGENT IDENTITY REJECTED**: ${error}`);
+    }
+    return;
+  }
 
   recordDiscordAudit({
     channelName: CHANNELS.ARENA,
@@ -48,9 +71,6 @@ export async function handleMessage(message: Message): Promise<void> {
     status: "received",
     contentPreview: message.content,
   });
-
-  // Record timing
-  const receivedAt = Date.now();
 
   await handleAgentProtocolMessage(agentMsg, {
     receivedAt,

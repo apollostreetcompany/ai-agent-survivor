@@ -52,7 +52,7 @@ const GM_SEASON_HELP = [
   "GM season commands:",
   "  !season bootstrap       Register the deterministic default playable roster.",
   "  !season start           Start Day 1 with already registered agents.",
-  "  !season setup           Bootstrap the default roster, then start Day 1.",
+  "  !season setup           Reset the default roster, then start clean Day 1.",
   "  !season status          Show season phase, day, and agent counts.",
   "  !season health          Show runtime health, stale heartbeats, scheduler status, and recent errors.",
   "  !season ops             Show run id, DB path, log path, and monitoring metadata.",

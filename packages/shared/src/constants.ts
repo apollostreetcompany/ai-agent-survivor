@@ -1,4 +1,11 @@
-import type { Resources, ResourceDelta, DifficultyProfile } from "./types.js";
+import defaultRoster from "./default-roster.json" with { type: "json" };
+import type {
+  AgentId,
+  DefaultRosterAgent,
+  DifficultyProfile,
+  ResourceDelta,
+  Resources,
+} from "./types.js";
 
 export const GAME_NAME = "AI Agent Survivor";
 
@@ -25,6 +32,48 @@ export const ELIMINATION_THRESHOLD = 0;
 export const MAX_DAYS = 10;
 export const MIN_AGENTS = 4;
 export const MAX_AGENTS = 16;
+
+// ---------------------------------------------------------------------------
+// Default Local Roster
+// ---------------------------------------------------------------------------
+
+function validateDefaultPlayableRoster(
+  roster: readonly DefaultRosterAgent[],
+): readonly DefaultRosterAgent[] {
+  if (roster.length < MIN_AGENTS) {
+    throw new Error(
+      `Default roster must include at least ${MIN_AGENTS} agents, found ${roster.length}.`,
+    );
+  }
+
+  const seenIds = new Set<AgentId>();
+  for (const agent of roster) {
+    if (seenIds.has(agent.id)) {
+      throw new Error(`Default roster contains duplicate agent ID: ${agent.id}`);
+    }
+    seenIds.add(agent.id);
+
+    if (
+      !agent.id ||
+      !agent.name ||
+      !agent.discordBotId ||
+      !agent.llmProvider ||
+      !agent.registeredAt
+    ) {
+      throw new Error(
+        `Default roster agent ${agent.id || "(missing id)"} is missing required fields.`,
+      );
+    }
+  }
+
+  return roster;
+}
+
+export const DEFAULT_PLAYABLE_ROSTER: readonly DefaultRosterAgent[] =
+  validateDefaultPlayableRoster(defaultRoster);
+export const DEFAULT_PLAYABLE_ROSTER_AGENT_IDS: readonly AgentId[] =
+  DEFAULT_PLAYABLE_ROSTER.map((agent) => agent.id);
+export const DEFAULT_ROSTER_REGISTERED_AT = DEFAULT_PLAYABLE_ROSTER[0].registeredAt;
 
 // ---------------------------------------------------------------------------
 // Canary Configuration

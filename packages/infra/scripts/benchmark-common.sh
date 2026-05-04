@@ -77,7 +77,7 @@ read_pid() {
 process_command() {
   case "$1" in
     gm-bot)
-      printf '%s' 'DISCORD_TOKEN="${GM_DISCORD_TOKEN:-}" GUILD_ID="${GUILD_ID:-}" DB_PATH="${GM_DB_PATH:-${BENCHMARK_RUNTIME_DIR}/data/survivor.db}" GAME_DATA_DIR="${GAME_DATA_DIR:-${BENCHMARK_RUNTIME_DIR}/game-data-content}" SURVIVOR_RUN_ID="${SURVIVOR_RUN_ID:-discord-benchmark}" SURVIVOR_LOG_DIR="${BENCHMARK_RUNTIME_DIR}/logs" SURVIVOR_HEALTH_FILE="${BENCHMARK_RUNTIME_DIR}/health/gm-bot.heartbeat" MAIL_HOST="${MAIL_HOST:-localhost}" GM_MAIL_PASS="${GM_MAIL_PASS:-}" NARRATOR_API_KEY="${NARRATOR_API_KEY:-}" NARRATOR_MODEL="${NARRATOR_MODEL:-}" bun --filter @survivor/gm-bot start'
+      printf '%s' 'DISCORD_TOKEN="${GM_DISCORD_TOKEN:-}" GUILD_ID="${GUILD_ID:-}" AGENT_ALPHA_DISCORD_BOT_ID="${AGENT_ALPHA_DISCORD_BOT_ID:-}" AGENT_BRAVO_DISCORD_BOT_ID="${AGENT_BRAVO_DISCORD_BOT_ID:-}" AGENT_CHARLIE_DISCORD_BOT_ID="${AGENT_CHARLIE_DISCORD_BOT_ID:-}" AGENT_DELTA_DISCORD_BOT_ID="${AGENT_DELTA_DISCORD_BOT_ID:-}" DB_PATH="${GM_DB_PATH:-${BENCHMARK_RUNTIME_DIR}/data/survivor.db}" GAME_DATA_DIR="${GAME_DATA_DIR:-${BENCHMARK_RUNTIME_DIR}/game-data-content}" SURVIVOR_RUN_ID="${SURVIVOR_RUN_ID:-discord-benchmark}" SURVIVOR_LOG_DIR="${BENCHMARK_RUNTIME_DIR}/logs" SURVIVOR_HEALTH_FILE="${BENCHMARK_RUNTIME_DIR}/health/gm-bot.heartbeat" MAIL_HOST="${MAIL_HOST:-localhost}" GM_MAIL_PASS="${GM_MAIL_PASS:-}" NARRATOR_API_KEY="${NARRATOR_API_KEY:-}" NARRATOR_MODEL="${NARRATOR_MODEL:-}" bun --filter @survivor/gm-bot start'
       ;;
     game-data)
       printf '%s' 'GAME_DATA_DIR="${GAME_DATA_DIR:-${BENCHMARK_RUNTIME_DIR}/game-data-content}" GAME_DATA_PORT="${GAME_DATA_PORT:-8787}" SURVIVOR_HEALTH_FILE="${BENCHMARK_RUNTIME_DIR}/health/game-data.heartbeat" node packages/infra/scripts/game-data-server.mjs'

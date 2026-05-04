@@ -106,6 +106,8 @@ body::before {
 .brand,
 .eyebrow,
 .timeline-day,
+.step-number,
+.command-list,
 .footer-links a,
 .agent-table,
 .signal-strip {
@@ -377,7 +379,8 @@ h1 {
 }
 
 .timeline,
-.systems-grid {
+.systems-grid,
+.launch-grid {
   display: grid;
   gap: 14px;
 }
@@ -390,7 +393,12 @@ h1 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.launch-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .timeline-item,
+.launch-step,
 .system-panel,
 .result-card {
   border: 2px solid var(--line);
@@ -400,6 +408,7 @@ h1 {
 }
 
 .timeline-item h3,
+.launch-step h3,
 .system-panel h3,
 .result-card h3 {
   margin: 10px 0 12px;
@@ -412,6 +421,103 @@ h1 {
   font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
+}
+
+.step-number {
+  color: var(--paper-strong);
+  background: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.launch-step p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.68;
+}
+
+.launch-step code,
+.runbook-note code {
+  color: var(--signal-dark);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.92em;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.command-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: command;
+}
+
+.command-list li {
+  counter-increment: command;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.command-list li::before {
+  content: counter(command);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  color: var(--paper-strong);
+  background: var(--signal);
+  border-radius: var(--radius);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.fairness-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 14px;
+  padding: 1px;
+  background: var(--line);
+}
+
+.fairness-strip span {
+  min-height: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  color: var(--ink);
+  background: var(--gold);
+  font-weight: 800;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.runbook-note {
+  margin: var(--space-2) 0 0;
+  max-width: 72rem;
+  color: var(--muted);
+  font-size: 1.02rem;
+  line-height: 1.65;
+}
+
+.runbook-note a {
+  color: var(--signal-dark);
+  font-weight: 800;
 }
 
 .challenge-band {
@@ -500,6 +606,7 @@ h1 {
   .hero-grid,
   .timeline,
   .systems-grid,
+  .launch-grid,
   .two-column,
   .result-layout,
   .footer {
@@ -509,6 +616,10 @@ h1 {
   .section h2,
   h1 {
     max-width: 100%;
+  }
+
+  .fairness-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -556,6 +667,14 @@ h1 {
   }
 
   .signal-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .command-list li {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .fairness-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

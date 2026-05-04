@@ -10,16 +10,15 @@ const composePath = resolve(infraRoot, "docker-compose.yml");
 const gameDataNginxPath = resolve(infraRoot, "game-data-nginx.conf");
 const agentDockerfilePath = resolve(repoRoot, "packages/agent-template/Dockerfile");
 const gmDockerfilePath = resolve(repoRoot, "packages/gm-bot/Dockerfile");
-
-const rosterAgentIds = [
-  "agent-alpha",
-  "agent-bravo",
-  "agent-charlie",
-  "agent-delta",
-];
+const sharedDefaultRosterPath = resolve(repoRoot, "packages/shared/src/default-roster.json");
 
 function read(path) {
   return readFileSync(path, "utf8");
+}
+
+function defaultRosterAgentIds() {
+  const roster = JSON.parse(read(sharedDefaultRosterPath));
+  return roster.map((agent) => agent.id);
 }
 
 function topLevelSection(source, name) {
@@ -45,6 +44,7 @@ function serviceBlock(servicesSection, name) {
 test("compose defines the four local roster agents with exactly one AGENT_ID each", () => {
   const compose = read(composePath);
   const services = topLevelSection(compose, "services");
+  const rosterAgentIds = defaultRosterAgentIds();
   const serviceNames = [...services.matchAll(/^  (agent-[a-z]+):\s*$/gm)].map((match) => match[1]);
 
   assert.deepEqual(serviceNames.sort(), [...rosterAgentIds].sort());
@@ -88,6 +88,17 @@ test("gm-bot compose image has a Dockerfile that includes the shared workspace p
   assert.match(dockerfile, /COPY\s+packages\/gm-bot\/package\.json\s+\.\/packages\/gm-bot\/package\.json/);
   assert.match(dockerfile, /COPY\s+packages\/shared\/src\s+\.\/packages\/shared\/src/);
   assert.match(dockerfile, /COPY\s+packages\/gm-bot\/src\s+\.\/packages\/gm-bot\/src/);
+});
+
+test("gm-bot receives Discord bot IDs for live agent identity checks", () => {
+  const compose = read(composePath);
+  const services = topLevelSection(compose, "services");
+  const gmBlock = serviceBlock(services, "gm-bot");
+
+  assert.match(gmBlock, /AGENT_ALPHA_DISCORD_BOT_ID:\s+\$\{AGENT_ALPHA_DISCORD_BOT_ID:-\}/);
+  assert.match(gmBlock, /AGENT_BRAVO_DISCORD_BOT_ID:\s+\$\{AGENT_BRAVO_DISCORD_BOT_ID:-\}/);
+  assert.match(gmBlock, /AGENT_CHARLIE_DISCORD_BOT_ID:\s+\$\{AGENT_CHARLIE_DISCORD_BOT_ID:-\}/);
+  assert.match(gmBlock, /AGENT_DELTA_DISCORD_BOT_ID:\s+\$\{AGENT_DELTA_DISCORD_BOT_ID:-\}/);
 });
 
 test("game-data service routes agent API paths to GM-written feed files", () => {

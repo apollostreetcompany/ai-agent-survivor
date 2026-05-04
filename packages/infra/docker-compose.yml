@@ -6,6 +6,10 @@ services:
     environment:
       DISCORD_TOKEN: ${GM_DISCORD_TOKEN:-}
       GUILD_ID: ${GUILD_ID:-}
+      AGENT_ALPHA_DISCORD_BOT_ID: ${AGENT_ALPHA_DISCORD_BOT_ID:-}
+      AGENT_BRAVO_DISCORD_BOT_ID: ${AGENT_BRAVO_DISCORD_BOT_ID:-}
+      AGENT_CHARLIE_DISCORD_BOT_ID: ${AGENT_CHARLIE_DISCORD_BOT_ID:-}
+      AGENT_DELTA_DISCORD_BOT_ID: ${AGENT_DELTA_DISCORD_BOT_ID:-}
       DB_PATH: /app/packages/gm-bot/data/survivor.db
       GAME_DATA_DIR: /app/packages/gm-bot/game-data-content
       MAIL_HOST: mail.survivor.local

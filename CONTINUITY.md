@@ -14,11 +14,14 @@ Success criteria:
 - Keep changes scoped to the minimum path needed to make agents playable.
 - The repo currently targets Bun workspaces and TypeScript packages.
 - Discord and Cloudflare deployment are separate from the local gameplay bootstrap path.
+- A publishable first run must use a clean Day 1 reset, the canonical four-agent roster, separate Discord bot user IDs, and disclosed OpenClaw/Hermes watchdog supervision.
 
 ## Key Decisions
 - Bead 1 is focused on deterministic agent bootstrap and game activation, not Discord admin commands.
 - The first agent path should fail loudly when the roster is too small.
 - Tests should use isolated SQLite databases so local state does not leak between runs.
+- `!season setup` is the public launch path and resets stale roster/gameplay state before starting Day 1.
+- Live Discord agent messages are accepted only when the claimed roster ID matches the registered Discord bot user ID.
 
 ## State
 ### Done
@@ -33,16 +36,17 @@ Success criteria:
 - [x] Bead 9: Landing page skill pass and production redeploy.
 - [x] Bead 10: Full landing page skill audit pass and production redeploy.
 - [x] Bead 11: Runnable Discord benchmark MVP with four agents, persistent ops state, local Mac supervision, and watchdog monitoring.
+- [x] Bead 12: Shared canonical roster with fresh fair setup, Discord identity checks, and publishable first-run instructions.
 
 ### Now
-- [ ] Bead 12: Consolidate default roster IDs into shared package to remove local duplication.
-
-### Next
 - [ ] Bead 13: Run the live Discord launch preflight with real credentials and OpenClaw hourly watchdog enabled.
 
+### Next
+- [ ] Publish Season 1 launch status/results after the first real 10-day Discord run.
+
 ## Open Questions
-- Should Bead 12 keep the default roster in shared constants only, or also expose a typed roster helper from `@survivor/shared`?
 - Should Bead 13 install the OpenClaw cron against `#gm-admin` or a dedicated ops Discord channel?
+- Which exact OpenClaw/Hermes cloud agents and provider/model IDs should be disclosed for each roster seat before Season 1 starts?
 
 ## Working Set
 - `packages/gm-bot/src/db/index.ts`
@@ -50,18 +54,30 @@ Success criteria:
 - `packages/gm-bot/src/engine/game-state.ts`
 - `packages/gm-bot/src/engine/resources.ts`
 - `packages/gm-bot/src/engine/scheduler.ts`
+- `packages/gm-bot/src/engine/roster.ts`
+- `packages/gm-bot/src/discord/events/message-handler.ts`
+- `packages/gm-bot/src/cli/season.ts`
 - `packages/gm-bot/src/ops/runtime.ts`
 - `packages/shared/src/types.ts`
 - `packages/shared/src/constants.ts`
+- `packages/shared/src/default-roster.json`
 - `packages/agent-template/src/agent.ts`
+- `packages/agent-template/src/local-runner.ts`
 - `packages/infra/scripts/benchmark-start.sh`
 - `packages/infra/scripts/benchmark-watchdog.sh`
+- `packages/infra/scripts/benchmark-common.sh`
+- `packages/infra/RUNBOOK.md`
+- `docs/index.html`
+- `docs/styles.css`
 
 Useful commands:
 - `bun install`
 - `bun run build`
 - `bun test`
 - `bun run test`
+- `bun --filter @survivor/gm-bot test`
+- `bun --filter @survivor/agent-template test`
+- `bun --filter @survivor/infra test`
 - `cd packages/infra && bun run benchmark:start`
 - `cd packages/infra && bun run benchmark:status`
 - `cd packages/infra && bun run benchmark:watchdog`

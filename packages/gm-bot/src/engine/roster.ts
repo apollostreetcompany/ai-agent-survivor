@@ -1,5 +1,10 @@
 import { eq } from "drizzle-orm";
-import { MIN_AGENTS, STARTING_RESOURCES } from "@survivor/shared";
+import {
+  DEFAULT_PLAYABLE_ROSTER as SHARED_DEFAULT_PLAYABLE_ROSTER,
+  DEFAULT_PLAYABLE_ROSTER_AGENT_IDS,
+  MIN_AGENTS,
+  STARTING_RESOURCES,
+} from "@survivor/shared";
 import type { AgentId, GamePhase } from "@survivor/shared";
 import { db, schema } from "../db/index.js";
 import {
@@ -25,38 +30,17 @@ export interface StartGameResult {
   activatedAgents: AgentRow[];
 }
 
-export const DEFAULT_ROSTER_REGISTERED_AT = "2026-01-01T00:00:00.000Z";
+export {
+  DEFAULT_PLAYABLE_ROSTER,
+  DEFAULT_ROSTER_REGISTERED_AT,
+} from "@survivor/shared";
 
-export const DEFAULT_PLAYABLE_ROSTER: AgentRegistrationInput[] = [
-  {
-    id: "agent-alpha",
-    name: "Agent Alpha",
-    discordBotId: "local-agent-alpha",
-    llmProvider: "prototype",
-    registeredAt: DEFAULT_ROSTER_REGISTERED_AT,
-  },
-  {
-    id: "agent-bravo",
-    name: "Agent Bravo",
-    discordBotId: "local-agent-bravo",
-    llmProvider: "prototype",
-    registeredAt: DEFAULT_ROSTER_REGISTERED_AT,
-  },
-  {
-    id: "agent-charlie",
-    name: "Agent Charlie",
-    discordBotId: "local-agent-charlie",
-    llmProvider: "prototype",
-    registeredAt: DEFAULT_ROSTER_REGISTERED_AT,
-  },
-  {
-    id: "agent-delta",
-    name: "Agent Delta",
-    discordBotId: "local-agent-delta",
-    llmProvider: "prototype",
-    registeredAt: DEFAULT_ROSTER_REGISTERED_AT,
-  },
-];
+const DISCORD_BOT_ID_ENV_BY_AGENT_ID: Record<string, string> = {
+  "agent-alpha": "AGENT_ALPHA_DISCORD_BOT_ID",
+  "agent-bravo": "AGENT_BRAVO_DISCORD_BOT_ID",
+  "agent-charlie": "AGENT_CHARLIE_DISCORD_BOT_ID",
+  "agent-delta": "AGENT_DELTA_DISCORD_BOT_ID",
+};
 
 function getAgent(agentId: AgentId): AgentRow | undefined {
   return db
@@ -82,6 +66,19 @@ function getActiveAgents(): AgentRow[] {
     .where(eq(schema.agents.status, "active"))
     .orderBy(schema.agents.id)
     .all();
+}
+
+function getRuntimeDefaultRoster(): AgentRegistrationInput[] {
+  return SHARED_DEFAULT_PLAYABLE_ROSTER.map((agent) => {
+    const discordBotIdEnv = DISCORD_BOT_ID_ENV_BY_AGENT_ID[agent.id];
+    const discordBotId = discordBotIdEnv ? process.env[discordBotIdEnv] : undefined;
+
+    return {
+      ...agent,
+      discordBotId: discordBotId || agent.discordBotId,
+      llmProvider: process.env.LLM_PROVIDER || agent.llmProvider,
+    };
+  });
 }
 
 function assertStartablePhase(phase: GamePhase): void {
@@ -125,7 +122,7 @@ export function registerAgent(input: AgentRegistrationInput): AgentRow {
 }
 
 export function bootstrapDefaultRoster(
-  roster: AgentRegistrationInput[] = DEFAULT_PLAYABLE_ROSTER,
+  roster: readonly AgentRegistrationInput[] = getRuntimeDefaultRoster(),
 ): AgentRow[] {
   if (roster.length < MIN_AGENTS) {
     throw new Error(
@@ -134,6 +131,111 @@ export function bootstrapDefaultRoster(
   }
 
   return roster.map((agent) => registerAgent(agent));
+}
+
+export function resetDefaultRosterForFreshSeason(
+  roster: readonly AgentRegistrationInput[] = getRuntimeDefaultRoster(),
+): AgentRow[] {
+  if (roster.length < MIN_AGENTS) {
+    throw new Error(
+      `Default roster must include at least ${MIN_AGENTS} agents, found ${roster.length}.`,
+    );
+  }
+
+  db.transaction((tx) => {
+    tx.delete(schema.taskAdjudications).run();
+    tx.delete(schema.taskCompletions).run();
+    tx.delete(schema.resourceLog).run();
+    tx.delete(schema.canaryResults).run();
+    tx.delete(schema.canaryChallenges).run();
+    tx.delete(schema.tasks).run();
+    tx.delete(schema.runtimeEvents).run();
+    tx.delete(schema.processHeartbeats).run();
+    tx.delete(schema.schedulerRuns).run();
+    tx.delete(schema.discordMessageAudit).run();
+    tx.delete(schema.timingRecords).run();
+    tx.delete(schema.agents).run();
+
+    tx.update(schema.gameState)
+      .set({
+        phase: "registration",
+        currentDay: 0,
+        startedAt: null,
+        completedAt: null,
+      })
+      .where(eq(schema.gameState.id, 1))
+      .run();
+
+    for (const agent of roster) {
+      tx.insert(schema.agents)
+        .values({
+          id: agent.id,
+          name: agent.name,
+          discordBotId: agent.discordBotId,
+          status: "registered",
+          water: STARTING_RESOURCES.water,
+          food: STARTING_RESOURCES.food,
+          llmProvider: agent.llmProvider,
+          registeredAt: agent.registeredAt ?? new Date().toISOString(),
+        })
+        .run();
+    }
+  });
+
+  return getRegisteredAgents();
+}
+
+export function assertOnlyDefaultRosterRegistered(): void {
+  const expectedIds = [...DEFAULT_PLAYABLE_ROSTER_AGENT_IDS];
+  const expected = new Set<string>(expectedIds);
+  const agents = db.select().from(schema.agents).orderBy(schema.agents.id).all();
+  const agentIds = new Set(agents.map((agent) => agent.id));
+  const unexpected = agents
+    .filter((agent) => !expected.has(agent.id))
+    .map((agent) => agent.id);
+  const missing = expectedIds.filter((agentId) => !agentIds.has(agentId));
+  const notRegistered = agents
+    .filter((agent) => expected.has(agent.id) && agent.status !== "registered")
+    .map((agent) => `${agent.id}:${agent.status}`);
+
+  if (unexpected.length > 0) {
+    throw new Error(`Cannot start default season: unexpected agents: ${unexpected.join(", ")}.`);
+  }
+
+  if (missing.length > 0) {
+    throw new Error(`Cannot start default season: missing agents: ${missing.join(", ")}.`);
+  }
+
+  if (notRegistered.length > 0) {
+    throw new Error(
+      `Cannot start default season: expected registered agents, found ${notRegistered.join(", ")}.`,
+    );
+  }
+}
+
+export function startDefaultRosterSeason(): StartGameResult {
+  assertOnlyDefaultRosterRegistered();
+  return startGameWithRegisteredAgents();
+}
+
+export function setupFreshDefaultSeason(): StartGameResult {
+  resetDefaultRosterForFreshSeason();
+  return startDefaultRosterSeason();
+}
+
+export function assertAgentDiscordAuthor(agentId: AgentId, discordAuthorId: string): AgentRow {
+  const agent = getAgent(agentId);
+  if (!agent) {
+    throw new Error(`Unknown agent ID: ${agentId}`);
+  }
+
+  if (agent.discordBotId !== discordAuthorId) {
+    throw new Error(
+      `Agent identity mismatch for ${agentId}: expected Discord bot ${agent.discordBotId}, got ${discordAuthorId}.`,
+    );
+  }
+
+  return agent;
 }
 
 export function startGameWithRegisteredAgents(): StartGameResult {

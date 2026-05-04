@@ -16,6 +16,8 @@ interface StartSeasonSummary {
 
 interface SeasonEngine {
   bootstrapDefaultRoster: () => AgentSummary[];
+  resetDefaultRosterForFreshSeason: () => AgentSummary[];
+  startDefaultRosterSeason: () => StartSeasonSummary;
   startGameWithRegisteredAgents: () => StartSeasonSummary;
 }
 
@@ -46,7 +48,7 @@ export const SEASON_CLI_USAGE = [
   "Commands:",
   "  bootstrap            Register the deterministic default playable roster.",
   "  start                Start a season with already registered agents.",
-  "  setup                Bootstrap the default roster, then start Day 1.",
+  "  setup                Reset the default roster, then start clean Day 1.",
   "  bootstrap-start      Alias for setup.",
 ].join("\n");
 
@@ -83,6 +85,8 @@ async function loadSeasonEngine(): Promise<SeasonEngine> {
 
   return {
     bootstrapDefaultRoster: roster.bootstrapDefaultRoster,
+    resetDefaultRosterForFreshSeason: roster.resetDefaultRosterForFreshSeason,
+    startDefaultRosterSeason: roster.startDefaultRosterSeason,
     startGameWithRegisteredAgents: roster.startGameWithRegisteredAgents,
   };
 }
@@ -123,10 +127,10 @@ export async function setupSeason(
   io: SeasonCommandIo = defaultIo,
 ): Promise<StartSeasonSummary> {
   const engine = await loadSeasonEngine();
-  const agents = engine.bootstrapDefaultRoster();
+  const agents = engine.resetDefaultRosterForFreshSeason();
   writeBootstrapStatus(io, agents);
 
-  const result = engine.startGameWithRegisteredAgents();
+  const result = engine.startDefaultRosterSeason();
   writeStartStatus(io, result);
   return result;
 }

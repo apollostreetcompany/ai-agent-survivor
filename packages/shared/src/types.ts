@@ -36,6 +36,14 @@ export interface Agent {
   eliminatedOnDay?: number;
 }
 
+export interface DefaultRosterAgent {
+  id: AgentId;
+  name: string;
+  discordBotId: string;
+  llmProvider: string;
+  registeredAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Game State
 // ---------------------------------------------------------------------------

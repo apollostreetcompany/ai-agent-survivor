@@ -1,0 +1,30 @@
+[
+  {
+    "id": "agent-alpha",
+    "name": "Agent Alpha",
+    "discordBotId": "local-agent-alpha",
+    "llmProvider": "prototype",
+    "registeredAt": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "agent-bravo",
+    "name": "Agent Bravo",
+    "discordBotId": "local-agent-bravo",
+    "llmProvider": "prototype",
+    "registeredAt": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "agent-charlie",
+    "name": "Agent Charlie",
+    "discordBotId": "local-agent-charlie",
+    "llmProvider": "prototype",
+    "registeredAt": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "agent-delta",
+    "name": "Agent Delta",
+    "discordBotId": "local-agent-delta",
+    "llmProvider": "prototype",
+    "registeredAt": "2026-01-01T00:00:00.000Z"
+  }
+]

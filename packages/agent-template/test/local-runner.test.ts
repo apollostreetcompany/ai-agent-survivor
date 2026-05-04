@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "node:test";
 import {
+  DEFAULT_PLAYABLE_ROSTER_AGENT_IDS,
   encodeGmMessage,
   parseMessage,
   type AgentMessage,
@@ -12,6 +13,7 @@ import {
 } from "../src/discord-handler.js";
 import {
   expectedLocalCanaryResponse,
+  LOCAL_ROSTER_AGENT_IDS,
   runLocalProtocolSmoke,
 } from "../src/local-runner.js";
 
@@ -45,6 +47,10 @@ describe("local agent protocol runner", () => {
       challengeId: "canary-test-survivor",
       response: expectedLocalCanaryResponse(),
     });
+  });
+
+  test("accepts exactly the shared default roster IDs", () => {
+    assert.deepEqual(LOCAL_ROSTER_AGENT_IDS, DEFAULT_PLAYABLE_ROSTER_AGENT_IDS);
   });
 
   test("fails clearly when AGENT_ID is missing or not in the local roster", async () => {

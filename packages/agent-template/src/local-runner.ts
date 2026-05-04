@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import {
+  DEFAULT_PLAYABLE_ROSTER_AGENT_IDS,
   encodeGmMessage,
   parseMessage,
   type AgentId,
@@ -14,12 +15,7 @@ import {
   configureAgentMessageTransport,
 } from "./discord-handler.js";
 
-export const LOCAL_ROSTER_AGENT_IDS = [
-  "agent-alpha",
-  "agent-bravo",
-  "agent-charlie",
-  "agent-delta",
-] as const;
+export const LOCAL_ROSTER_AGENT_IDS = DEFAULT_PLAYABLE_ROSTER_AGENT_IDS;
 
 export const LOCAL_CANARY_INPUT = "survivor";
 export const LOCAL_CANARY_ID = "local-canary-survivor-sha256";

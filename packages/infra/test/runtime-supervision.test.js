@@ -7,7 +7,9 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const infraRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const repoRoot = resolve(infraRoot, "../..");
 const scriptsDir = resolve(infraRoot, "scripts");
+const sharedDefaultRosterPath = resolve(repoRoot, "packages/shared/src/default-roster.json");
 
 const scripts = {
   start: resolve(scriptsDir, "benchmark-start.sh"),
@@ -32,20 +34,30 @@ function run(scriptPath, args = [], { runtimeDir, envFile = resolve(infraRoot, "
   });
 }
 
+function defaultRosterAgentIds() {
+  const roster = JSON.parse(readFileSync(sharedDefaultRosterPath, "utf8"));
+  return roster.map((agent) => agent.id);
+}
+
+function expectedRuntimeProcesses() {
+  return ["game-data", "gm-bot", ...defaultRosterAgentIds()];
+}
+
 test("runtime supervision scripts exist and output process JSON without credentials", () => {
   const runtimeDir = mkdtempSync(resolve(tmpdir(), "infra-runtime-"));
+  const expectedProcessCount = expectedRuntimeProcesses().length;
 
   try {
     const start = JSON.parse(run(scripts.start, ["--dry-run"], { runtimeDir }));
-    assert.equal(start.processes.length, 6);
+    assert.equal(start.processes.length, expectedProcessCount);
     assert.equal(start.healthy, false);
 
     const status = JSON.parse(run(scripts.status, [], { runtimeDir }));
-    assert.equal(status.processes.length, 6);
+    assert.equal(status.processes.length, expectedProcessCount);
     assert.equal(status.processes.every((process) => typeof process.name === "string"), true);
 
     const stop = JSON.parse(run(scripts.stop, [], { runtimeDir }));
-    assert.equal(stop.processes.length, 6);
+    assert.equal(stop.processes.length, expectedProcessCount);
   } finally {
     rmSync(runtimeDir, { recursive: true, force: true });
   }
@@ -63,7 +75,7 @@ test("watchdog marks dead pid files for restart in check-only mode", () => {
     mkdirSync(logsDir, { recursive: true });
     mkdirSync(healthDir, { recursive: true });
 
-    for (const process of ["game-data", "gm-bot", "agent-alpha", "agent-bravo", "agent-charlie", "agent-delta"]) {
+    for (const process of expectedRuntimeProcesses()) {
       writeFileSync(resolve(pidsDir, `${process}.pid`), "999999\n");
       writeFileSync(resolve(logsDir, `${process}.log`), "");
       writeFileSync(resolve(healthDir, `${process}.heartbeat`), "");
@@ -73,12 +85,9 @@ test("watchdog marks dead pid files for restart in check-only mode", () => {
 
     const events = readFileSync(resolve(runtimeDir, "events.jsonl"), "utf8");
     assert.match(events, /"action":"watchdog_detected"/);
-    assert.match(events, /"process":"game-data"/);
-    assert.match(events, /"process":"gm-bot"/);
-    assert.match(events, /"process":"agent-alpha"/);
-    assert.match(events, /"process":"agent-bravo"/);
-    assert.match(events, /"process":"agent-charlie"/);
-    assert.match(events, /"process":"agent-delta"/);
+    for (const process of expectedRuntimeProcesses()) {
+      assert.match(events, new RegExp(`"process":"${process}"`));
+    }
   } finally {
     rmSync(runtimeDir, { recursive: true, force: true });
   }
@@ -88,6 +97,7 @@ test("scripts map runbook credentials into workspace dev commands", () => {
   const common = readFileSync(resolve(scriptsDir, "benchmark-common.sh"), "utf8");
 
   assert.match(common, /DISCORD_TOKEN="\$\{GM_DISCORD_TOKEN:-\}"/);
+  assert.match(common, /AGENT_ALPHA_DISCORD_BOT_ID="\$\{AGENT_ALPHA_DISCORD_BOT_ID:-\}"/);
   assert.match(common, /DISCORD_TOKEN="\$\{AGENT_ALPHA_DISCORD_TOKEN:-\}"/);
   assert.match(common, /LLM_API_KEY="\$\{AGENT_ALPHA_LLM_API_KEY:-\}"/);
   assert.match(common, /node packages\/infra\/scripts\/game-data-server\.mjs/);
@@ -100,13 +110,14 @@ test("env file runtime directory is honored by status script", () => {
   const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-env-runtime-"));
   const runtimeDir = resolve(tempRoot, "from-env");
   const envFile = resolve(tempRoot, ".env");
+  const expectedProcessCount = expectedRuntimeProcesses().length;
 
   try {
     writeFileSync(envFile, `BENCHMARK_RUNTIME_DIR=${runtimeDir}\n`);
 
     const status = JSON.parse(run(scripts.status, [], { envFile }));
     assert.equal(status.runtimeDir, runtimeDir);
-    assert.equal(status.processes.length, 6);
+    assert.equal(status.processes.length, expectedProcessCount);
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }
