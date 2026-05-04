@@ -2,19 +2,19 @@
 
 const TEXT_CHANNEL_TYPE = 0;
 const ALL_REQUIRED_CHANNELS = [
-  "announcements",
-  "arena",
-  "agent-chat",
-  "scoreboard",
-  "integrity-log",
-  "spectator-lounge",
-  "gm-admin",
+  { name: "announcements", env: "DISCORD_ANNOUNCEMENTS_CHANNEL_ID" },
+  { name: "arena", env: "DISCORD_ARENA_CHANNEL_ID" },
+  { name: "agent-chat", env: "DISCORD_AGENT_CHAT_CHANNEL_ID" },
+  { name: "scoreboard", env: "DISCORD_SCOREBOARD_CHANNEL_ID" },
+  { name: "integrity-log", env: "DISCORD_INTEGRITY_LOG_CHANNEL_ID" },
+  { name: "spectator-lounge", env: "DISCORD_SPECTATOR_LOUNGE_CHANNEL_ID" },
+  { name: "gm-admin", env: "DISCORD_GM_ADMIN_CHANNEL_ID" },
 ];
 const AGENT_REQUIRED_CHANNELS = [
-  "announcements",
-  "arena",
-  "agent-chat",
-  "scoreboard",
+  { name: "announcements", env: "DISCORD_ANNOUNCEMENTS_CHANNEL_ID" },
+  { name: "arena", env: "DISCORD_ARENA_CHANNEL_ID" },
+  { name: "agent-chat", env: "DISCORD_AGENT_CHAT_CHANNEL_ID" },
+  { name: "scoreboard", env: "DISCORD_SCOREBOARD_CHANNEL_ID" },
 ];
 
 const IDENTITIES = [
@@ -101,28 +101,69 @@ async function fetchCurrentUser({ apiBase, token, role }) {
   return user;
 }
 
-async function fetchGuildChannels({ apiBase, guildId, token, role }) {
-  const channels = await discordFetchJson({
+async function fetchChannel({ apiBase, channelId, token, role, channelName }) {
+  const channel = await discordFetchJson({
     apiBase,
-    path: `/guilds/${encodeURIComponent(guildId)}/channels`,
+    path: `/channels/${encodeURIComponent(channelId)}`,
     token,
-    label: `Discord channel visibility check for ${role}`,
+    label: `Discord channel metadata check for ${role} #${channelName}`,
   });
 
-  if (!Array.isArray(channels)) {
-    throw new Error(`Discord channel visibility check for ${role} returned non-array JSON`);
+  if (!channel || typeof channel.id !== "string") {
+    throw new Error(`Discord channel metadata check for ${role} #${channelName} returned no channel id`);
   }
 
-  return channels;
+  return channel;
 }
 
-function visibleTextChannelNames(channels) {
-  return new Set(
-    channels
-      .filter((channel) => channel && channel.type === TEXT_CHANNEL_TYPE)
-      .map((channel) => channel.name)
-      .filter((name) => typeof name === "string" && name.length > 0),
-  );
+async function fetchChannelMessages({ apiBase, channelId, token, role, channelName }) {
+  const messages = await discordFetchJson({
+    apiBase,
+    path: `/channels/${encodeURIComponent(channelId)}/messages?limit=1`,
+    token,
+    label: `Discord channel read check for ${role} #${channelName}`,
+  });
+
+  if (!Array.isArray(messages)) {
+    throw new Error(`Discord channel read check for ${role} #${channelName} returned non-array JSON`);
+  }
+
+  return messages;
+}
+
+async function verifyChannelAccess({ apiBase, guildId, token, role, channel }) {
+  const channelId = requireEnv(channel.env);
+  const metadata = await fetchChannel({
+    apiBase,
+    channelId,
+    token,
+    role,
+    channelName: channel.name,
+  });
+
+  if (metadata.guild_id !== guildId) {
+    throw new Error(
+      `${role} #${channel.name} channel ${channel.env} is not in configured GUILD_ID`,
+    );
+  }
+
+  if (metadata.type !== TEXT_CHANNEL_TYPE) {
+    throw new Error(`${role} #${channel.name} channel ${channel.env} is not a Discord text channel`);
+  }
+
+  if (metadata.name !== channel.name) {
+    throw new Error(
+      `${role} #${channel.name} channel ${channel.env} resolved to #${metadata.name || "unknown"}`,
+    );
+  }
+
+  await fetchChannelMessages({
+    apiBase,
+    channelId,
+    token,
+    role,
+    channelName: channel.name,
+  });
 }
 
 async function verifyIdentity({ identity, guildId, apiBase }) {
@@ -136,18 +177,17 @@ async function verifyIdentity({ identity, guildId, apiBase }) {
     );
   }
 
-  const channels = await fetchGuildChannels({
-    apiBase,
-    guildId,
-    token,
-    role: identity.role,
-  });
-  const textChannelNames = visibleTextChannelNames(channels);
-  const missingChannels = identity.requiredChannels.filter((name) => !textChannelNames.has(name));
-  if (missingChannels.length > 0) {
-    throw new Error(
-      `${identity.role} cannot see required Discord channels: ${missingChannels.join(", ")}`,
-    );
+  const inaccessibleChannels = [];
+  for (const channel of identity.requiredChannels) {
+    try {
+      await verifyChannelAccess({ apiBase, guildId, token, role: identity.role, channel });
+    } catch (err) {
+      inaccessibleChannels.push(`#${channel.name} (${err instanceof Error ? err.message : String(err)})`);
+    }
+  }
+
+  if (inaccessibleChannels.length > 0) {
+    throw new Error(`${identity.role} cannot read required Discord channels: ${inaccessibleChannels.join(", ")}`);
   }
 
   return {

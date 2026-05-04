@@ -79,6 +79,15 @@ function buildMetadata() {
     },
     discord: {
       gmBotId: requireEnv("GM_DISCORD_BOT_ID"),
+      channels: {
+        gmAdmin: requireEnv("DISCORD_GM_ADMIN_CHANNEL_ID"),
+        announcements: requireEnv("DISCORD_ANNOUNCEMENTS_CHANNEL_ID"),
+        arena: requireEnv("DISCORD_ARENA_CHANNEL_ID"),
+        agentChat: requireEnv("DISCORD_AGENT_CHAT_CHANNEL_ID"),
+        scoreboard: requireEnv("DISCORD_SCOREBOARD_CHANNEL_ID"),
+        integrityLog: requireEnv("DISCORD_INTEGRITY_LOG_CHANNEL_ID"),
+        spectatorLounge: requireEnv("DISCORD_SPECTATOR_LOUNGE_CHANNEL_ID"),
+      },
     },
     supervision: {
       watchdog: {

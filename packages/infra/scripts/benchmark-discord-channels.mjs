@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 const REQUIRED_CHANNELS = [
-  "announcements",
-  "arena",
-  "agent-chat",
-  "scoreboard",
-  "integrity-log",
-  "spectator-lounge",
-  "gm-admin",
+  { name: "gm-admin", env: "DISCORD_GM_ADMIN_CHANNEL_ID" },
+  { name: "announcements", env: "DISCORD_ANNOUNCEMENTS_CHANNEL_ID" },
+  { name: "arena", env: "DISCORD_ARENA_CHANNEL_ID" },
+  { name: "agent-chat", env: "DISCORD_AGENT_CHAT_CHANNEL_ID" },
+  { name: "scoreboard", env: "DISCORD_SCOREBOARD_CHANNEL_ID" },
+  { name: "integrity-log", env: "DISCORD_INTEGRITY_LOG_CHANNEL_ID" },
+  { name: "spectator-lounge", env: "DISCORD_SPECTATOR_LOUNGE_CHANNEL_ID" },
 ];
 
 const TEXT_CHANNEL_TYPE = 0;
@@ -20,8 +20,9 @@ function requireEnv(name) {
   return value;
 }
 
-async function fetchGuildChannels({ guildId, token, apiBase }) {
-  const url = `${apiBase.replace(/\/$/, "")}/guilds/${encodeURIComponent(guildId)}/channels`;
+async function fetchChannel({ channel, token, apiBase }) {
+  const channelId = requireEnv(channel.env);
+  const url = `${apiBase.replace(/\/$/, "")}/channels/${encodeURIComponent(channelId)}`;
   const timeoutMs = Number(process.env.BENCHMARK_DISCORD_CHANNEL_CHECK_TIMEOUT_MS || 10_000);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -39,31 +40,64 @@ async function fetchGuildChannels({ guildId, token, apiBase }) {
   }
 
   if (!response.ok) {
-    throw new Error(`Discord channel check failed with HTTP ${response.status}`);
+    throw new Error(`Discord channel check for #${channel.name} failed with HTTP ${response.status}`);
   }
 
-  const channels = await response.json();
-  if (!Array.isArray(channels)) {
-    throw new Error("Discord channel check returned non-array JSON");
+  const fetchedChannel = await response.json();
+  if (!fetchedChannel || fetchedChannel.id !== channelId) {
+    throw new Error(`Discord channel check for #${channel.name} returned the wrong channel`);
   }
-  return channels;
+  if (fetchedChannel.type !== TEXT_CHANNEL_TYPE) {
+    throw new Error(`Discord channel check for #${channel.name} returned a non-text channel`);
+  }
+  if (fetchedChannel.name !== channel.name) {
+    throw new Error(
+      `Discord channel check for #${channel.name} expected exact name, got #${fetchedChannel.name || "unknown"}`,
+    );
+  }
+  return fetchedChannel;
+}
+
+async function fetchChannelMessages({ channel, token, apiBase }) {
+  const channelId = requireEnv(channel.env);
+  const url = `${apiBase.replace(/\/$/, "")}/channels/${encodeURIComponent(channelId)}/messages?limit=1`;
+  const timeoutMs = Number(process.env.BENCHMARK_DISCORD_CHANNEL_CHECK_TIMEOUT_MS || 10_000);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: {
+        authorization: `Bot ${token}`,
+        accept: "application/json",
+      },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!response.ok) {
+    throw new Error(`Discord channel read check for #${channel.name} failed with HTTP ${response.status}`);
+  }
+
+  const messages = await response.json();
+  if (!Array.isArray(messages)) {
+    throw new Error(`Discord channel read check for #${channel.name} returned non-array JSON`);
+  }
 }
 
 async function main() {
   const guildId = requireEnv("GUILD_ID");
   const token = requireEnv("GM_DISCORD_TOKEN");
   const apiBase = process.env.BENCHMARK_DISCORD_API_BASE || "https://discord.com/api/v10";
-  const channels = await fetchGuildChannels({ guildId, token, apiBase });
-  const textChannelNames = new Set(
-    channels
-      .filter((channel) => channel && channel.type === TEXT_CHANNEL_TYPE)
-      .map((channel) => channel.name)
-      .filter((name) => typeof name === "string" && name.length > 0),
-  );
-  const missingChannels = REQUIRED_CHANNELS.filter((name) => !textChannelNames.has(name));
 
-  if (missingChannels.length > 0) {
-    throw new Error(`Missing required Discord channels: ${missingChannels.join(", ")}`);
+  for (const channel of REQUIRED_CHANNELS) {
+    const fetchedChannel = await fetchChannel({ channel, token, apiBase });
+    if (fetchedChannel.guild_id !== guildId) {
+      throw new Error(`#${channel.name} is not in configured GUILD_ID`);
+    }
+    await fetchChannelMessages({ channel, token, apiBase });
   }
 
   process.stdout.write(

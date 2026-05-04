@@ -20,6 +20,15 @@ const requiredDiscordChannels = [
   "spectator-lounge",
   "gm-admin",
 ];
+const discordChannelIdsByName = {
+  "gm-admin": "channel-gm-admin",
+  announcements: "channel-announcements",
+  arena: "channel-arena",
+  "agent-chat": "channel-agent-chat",
+  scoreboard: "channel-scoreboard",
+  "integrity-log": "channel-integrity-log",
+  "spectator-lounge": "channel-spectator-lounge",
+};
 const discordTokenUserIds = {
   "gm-token": "gm-discord-bot",
   "alpha-discord-token": "alpha-discord-bot",
@@ -133,6 +142,13 @@ function writeValidBenchmarkEnv(path, overrides = {}) {
     GUILD_ID: "guild-123",
     GM_DISCORD_TOKEN: "gm-token",
     GM_DISCORD_BOT_ID: "gm-discord-bot",
+    DISCORD_GM_ADMIN_CHANNEL_ID: discordChannelIdsByName["gm-admin"],
+    DISCORD_ANNOUNCEMENTS_CHANNEL_ID: discordChannelIdsByName.announcements,
+    DISCORD_ARENA_CHANNEL_ID: discordChannelIdsByName.arena,
+    DISCORD_AGENT_CHAT_CHANNEL_ID: discordChannelIdsByName["agent-chat"],
+    DISCORD_SCOREBOARD_CHANNEL_ID: discordChannelIdsByName.scoreboard,
+    DISCORD_INTEGRITY_LOG_CHANNEL_ID: discordChannelIdsByName["integrity-log"],
+    DISCORD_SPECTATOR_LOUNGE_CHANNEL_ID: discordChannelIdsByName["spectator-lounge"],
     AGENT_ALPHA_DISCORD_TOKEN: "alpha-discord-token",
     AGENT_BRAVO_DISCORD_TOKEN: "bravo-discord-token",
     AGENT_CHARLIE_DISCORD_TOKEN: "charlie-discord-token",
@@ -187,13 +203,17 @@ async function withDiscordApiServer(
     ...discordTokenUserIds,
     ...userIdsByToken,
   };
+  const namesByChannelId = new Map(
+    Object.entries(discordChannelIdsByName).map(([name, id]) => [id, name]),
+  );
 
   function channelsForToken(token) {
     const names = channelNamesByToken[token] || channelNames;
     return names.map((name, index) => ({
-      id: `${token || "unknown"}-${index + 1}`,
+      id: discordChannelIdsByName[name] || `${token || "unknown"}-${index + 1}`,
       type: 0,
       name,
+      guild_id: "guild-123",
     }));
   }
 
@@ -214,8 +234,29 @@ async function withDiscordApiServer(
     }
 
     if (req.url === "/guilds/guild-123/channels") {
+      res.statusCode = 500;
+      res.end(JSON.stringify({ error: "preflight must not use guild channel listing" }));
+      return;
+    }
+
+    const url = new URL(req.url || "/", "http://127.0.0.1");
+    const channelMatch = url.pathname.match(/^\/channels\/([^/]+)(?:\/messages)?$/);
+    if (channelMatch) {
+      const channelId = decodeURIComponent(channelMatch[1]);
+      const channelName = namesByChannelId.get(channelId);
+      const readableChannel = channelsForToken(token).find((channel) => channel.id === channelId);
+      if (!channelName || !readableChannel) {
+        res.statusCode = 403;
+        res.end(JSON.stringify({ error: "missing channel access" }));
+        return;
+      }
+
       res.setHeader("content-type", "application/json");
-      res.end(JSON.stringify(channelsForToken(token)));
+      if (url.pathname.endsWith("/messages")) {
+        res.end(JSON.stringify([]));
+      } else {
+        res.end(JSON.stringify(readableChannel));
+      }
       return;
     }
 
@@ -362,7 +403,7 @@ test("benchmark preflight rejects Discord servers missing required channels", as
 
       await assert.rejects(
         () => runPreflight({ envFile }),
-        /GM cannot see required Discord channels: announcements/,
+        /GM cannot read required Discord channels: #announcements/,
       );
     });
   } finally {
@@ -413,7 +454,7 @@ test("benchmark preflight rejects agent bots missing required channel visibility
 
         await assert.rejects(
           () => runPreflight({ envFile }),
-          /agent-bravo cannot see required Discord channels: agent-chat/,
+          /agent-bravo cannot read required Discord channels: #agent-chat/,
         );
       },
     );

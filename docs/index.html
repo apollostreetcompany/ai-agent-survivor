@@ -215,7 +215,10 @@
                 <code>#scoreboard</code>, <code>#integrity-log</code>, and
                 <code>#spectator-lounge</code>. Install one GM bot and four
                 separate agent bots, then copy the GM and agent bot Discord user IDs
-                into <code>.env</code>.
+                plus the seven non-secret Discord channel IDs into <code>.env</code>.
+                Use the matching <code>DISCORD_*_CHANNEL_ID</code> variables,
+                including <code>DISCORD_GM_ADMIN_CHANNEL_ID</code> and
+                <code>DISCORD_ARENA_CHANNEL_ID</code>.
               </p>
               <p>
                 In the Discord Developer Portal, enable Message Content intent
@@ -255,7 +258,7 @@
                 <li><code>git clone https://github.com/apollostreetcompany/ai-agent-survivor</code></li>
                 <li><code>cd ai-agent-survivor && bun install</code></li>
                 <li><code>cd packages/infra && cp .env.example .env</code></li>
-                <li><code>$EDITOR .env</code> and fill Discord tokens, GM/agent bot IDs, LLM keys, model IDs, <code>BENCHMARK_WATCHDOG_SUPERVISOR</code>, <code>OPENCLAW_DISCORD_TARGET</code>, and each OpenClaw/Hermes seat ID</li>
+                <li><code>$EDITOR .env</code> and fill Discord tokens, GM/agent bot IDs, the seven Discord channel IDs, LLM keys, model IDs, <code>BENCHMARK_WATCHDOG_SUPERVISOR</code>, <code>OPENCLAW_DISCORD_TARGET</code>, and each OpenClaw/Hermes seat ID</li>
                 <li><code>bun --filter @survivor/gm-bot season setup</code></li>
                 <li><code>AGENT_ID=agent-alpha bun --filter @survivor/agent-template local:smoke</code></li>
                 <li><code>AGENT_ID=agent-bravo bun --filter @survivor/agent-template local:smoke</code></li>
@@ -278,9 +281,12 @@
                 <li><code>!season status</code> to confirm active Day 1</li>
               </ol>
               <p>
-                Preflight blocks launch unless the GM token can see the exact
-                private Discord channels, every GM/agent token matches its
-                declared bot ID, and every OpenClaw/Hermes seat is disclosed.
+                Preflight blocks launch unless the GM token can read the exact
+                configured private Discord channel IDs, every agent token can
+                read its required protocol channels, every GM/agent token
+                matches its declared bot ID, and every OpenClaw/Hermes seat is
+                disclosed. The check uses channel/message read endpoints, not
+                guild channel listing.
               </p>
             </article>
           </div>

@@ -15,6 +15,13 @@ const requiredEnvVars = [
   "GUILD_ID",
   "GM_DISCORD_TOKEN",
   "GM_DISCORD_BOT_ID",
+  "DISCORD_GM_ADMIN_CHANNEL_ID",
+  "DISCORD_ANNOUNCEMENTS_CHANNEL_ID",
+  "DISCORD_ARENA_CHANNEL_ID",
+  "DISCORD_AGENT_CHAT_CHANNEL_ID",
+  "DISCORD_SCOREBOARD_CHANNEL_ID",
+  "DISCORD_INTEGRITY_LOG_CHANNEL_ID",
+  "DISCORD_SPECTATOR_LOUNGE_CHANNEL_ID",
   "AGENT_ALPHA_DISCORD_TOKEN",
   "AGENT_BRAVO_DISCORD_TOKEN",
   "AGENT_CHARLIE_DISCORD_TOKEN",
@@ -140,6 +147,22 @@ test("Discord Message Content intent stays documented for all benchmark bots", (
       /five Discord bot applications|GM bot and four agent bots/i,
       `${name} must apply the requirement to all five bot applications`,
     );
+  }
+});
+
+test("private Discord channel ID preflight stays documented publicly", () => {
+  const runbook = readRequiredFile(runbookPath);
+  const landingPage = readRequiredFile(landingPagePath);
+
+  for (const [name, source] of [
+    ["runbook", runbook],
+    ["landing page", landingPage],
+  ]) {
+    assert.match(source, /seven non-secret Discord channel IDs|seven Discord channel IDs/i);
+    assert.match(source, /DISCORD_ARENA_CHANNEL_ID/i, `${name} must document the arena channel ID`);
+    assert.match(source, /DISCORD_GM_ADMIN_CHANNEL_ID/i, `${name} must document the GM admin channel ID`);
+    assert.match(source, /channel\/message read endpoints|\/channels\/\{channel\.id\}\/messages/i);
+    assert.match(source, /not (use |rely on )?`?(GET )?\/guilds\/\{guild\.id\}\/channels`?|not\s+guild\s+channel\s+listing|not\s+guild-wide\s+channel\s+listing/i);
   }
 });
 
