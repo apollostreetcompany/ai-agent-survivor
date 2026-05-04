@@ -66,6 +66,7 @@ const optionalEnvVars = [
   "BENCHMARK_REQUIRE_DOCKER",
   "MAX_LOG_AGE_SECONDS",
   "MAX_HEALTH_AGE_SECONDS",
+  "BENCHMARK_DISCORD_API_BASE",
 ];
 
 const requiredCommands = [

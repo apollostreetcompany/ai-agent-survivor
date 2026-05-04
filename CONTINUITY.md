@@ -37,6 +37,7 @@ Success criteria:
 - The 10-day runtime should restart crashed Docker services and detect stale local supervised processes, including live PIDs with stale logs and missing heartbeats.
 - `benchmark:preflight` should fail before launch if the GM Discord token cannot see all required private-server channels.
 - Agents should reject GM-looking Discord protocol messages unless they come from the configured GM bot user ID and an expected GM protocol channel.
+- `benchmark:preflight` calls Discord with each GM/agent token and fails if `/users/@me` does not match the declared bot user ID or if the token cannot see the required guild text channels for that bot.
 
 ## State
 ### Done
@@ -61,9 +62,10 @@ Success criteria:
 - [x] Bead 19: 10-day runtime hardening for Docker restart policies, game-data healthcheck, and watchdog stale detection.
 - [x] Bead 20: Discord channel preflight gate for private-server launch readiness.
 - [x] Bead 21: Discord GM-message authenticity gate for agent runtime and launch preflight.
+- [x] Bead 22: Discord token identity and channel visibility preflight gate.
 
 ### Now
-- [ ] Bead 22: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
+- [ ] Bead 23: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
 
 ### Next
 - [ ] Publish Season 1 launch status/results after the first real 10-day Discord run.
@@ -92,6 +94,7 @@ Success criteria:
 - `packages/infra/scripts/benchmark-doctor.mjs`
 - `packages/infra/scripts/benchmark-preflight.sh`
 - `packages/infra/scripts/benchmark-discord-channels.mjs`
+- `packages/infra/scripts/benchmark-discord-identities.mjs`
 - `packages/infra/scripts/benchmark-metadata.mjs`
 - `packages/infra/scripts/benchmark-watchdog.sh`
 - `packages/infra/scripts/benchmark-common.sh`

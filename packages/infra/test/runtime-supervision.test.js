@@ -20,6 +20,13 @@ const requiredDiscordChannels = [
   "spectator-lounge",
   "gm-admin",
 ];
+const discordTokenUserIds = {
+  "gm-token": "gm-discord-bot",
+  "alpha-discord-token": "alpha-discord-bot",
+  "bravo-discord-token": "bravo-discord-bot",
+  "charlie-discord-token": "charlie-discord-bot",
+  "delta-discord-token": "delta-discord-bot",
+};
 
 const scripts = {
   preflight: resolve(scriptsDir, "benchmark-preflight.sh"),
@@ -168,16 +175,47 @@ function shellEnvValue(value) {
   return `"${stringValue.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-async function withDiscordChannelServer(channelNames, callback) {
-  const channels = channelNames.map((name, index) => ({
-    id: String(index + 1),
-    type: 0,
-    name,
-  }));
+async function withDiscordApiServer(
+  {
+    channelNames = requiredDiscordChannels,
+    channelNamesByToken = {},
+    userIdsByToken = {},
+  } = {},
+  callback,
+) {
+  const userIds = {
+    ...discordTokenUserIds,
+    ...userIdsByToken,
+  };
+
+  function channelsForToken(token) {
+    const names = channelNamesByToken[token] || channelNames;
+    return names.map((name, index) => ({
+      id: `${token || "unknown"}-${index + 1}`,
+      type: 0,
+      name,
+    }));
+  }
+
   const server = createServer((req, res) => {
+    const token = String(req.headers.authorization || "").replace(/^Bot\s+/i, "");
+    const userId = userIds[token];
+
+    if (!userId) {
+      res.statusCode = 401;
+      res.end(JSON.stringify({ error: "unknown token" }));
+      return;
+    }
+
+    if (req.url === "/users/@me") {
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ id: userId, bot: true }));
+      return;
+    }
+
     if (req.url === "/guilds/guild-123/channels") {
       res.setHeader("content-type", "application/json");
-      res.end(JSON.stringify(channels));
+      res.end(JSON.stringify(channelsForToken(token)));
       return;
     }
 
@@ -198,6 +236,10 @@ async function withDiscordChannelServer(channelNames, callback) {
     server.closeAllConnections?.();
     await new Promise((resolve) => server.close(resolve));
   }
+}
+
+async function withDiscordChannelServer(channelNames, callback) {
+  return await withDiscordApiServer({ channelNames }, callback);
 }
 
 test("runtime supervision scripts exist and output process JSON without credentials", () => {
@@ -320,9 +362,61 @@ test("benchmark preflight rejects Discord servers missing required channels", as
 
       await assert.rejects(
         () => runPreflight({ envFile }),
-        /Missing required Discord channels: announcements/,
+        /GM cannot see required Discord channels: announcements/,
       );
     });
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark preflight rejects Discord token and bot ID mismatches without printing tokens", async () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-preflight-discord-identity-"));
+  const envFile = resolve(tempRoot, ".env");
+
+  try {
+    await withDiscordChannelServer(requiredDiscordChannels, async (discordApiBase) => {
+      writeValidBenchmarkEnv(envFile, {
+        AGENT_ALPHA_DISCORD_BOT_ID: "wrong-alpha-bot",
+        BENCHMARK_DISCORD_API_BASE: discordApiBase,
+      });
+
+      const result = await runResult(scripts.preflight, [], { envFile });
+      assert.notEqual(result.status, 0);
+      assert.match(
+        result.stderr,
+        /AGENT_ALPHA_DISCORD_TOKEN resolves to Discord user alpha-discord-bot, expected AGENT_ALPHA_DISCORD_BOT_ID=wrong-alpha-bot/,
+      );
+      assert.equal(result.stderr.includes("alpha-discord-token"), false);
+      assert.equal(result.stdout.includes("alpha-discord-token"), false);
+    });
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark preflight rejects agent bots missing required channel visibility", async () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-preflight-discord-agent-channels-"));
+  const envFile = resolve(tempRoot, ".env");
+
+  try {
+    await withDiscordApiServer(
+      {
+        channelNamesByToken: {
+          "bravo-discord-token": ["announcements", "arena", "scoreboard"],
+        },
+      },
+      async (discordApiBase) => {
+        writeValidBenchmarkEnv(envFile, {
+          BENCHMARK_DISCORD_API_BASE: discordApiBase,
+        });
+
+        await assert.rejects(
+          () => runPreflight({ envFile }),
+          /agent-bravo cannot see required Discord channels: agent-chat/,
+        );
+      },
+    );
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }

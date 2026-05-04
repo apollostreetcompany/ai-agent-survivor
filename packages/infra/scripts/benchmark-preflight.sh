@@ -117,7 +117,7 @@ assert_unique_values \
   "${AGENT_CHARLIE_CLOUD_SEAT_ID}" \
   "${AGENT_DELTA_CLOUD_SEAT_ID}"
 
-node "${SCRIPT_DIR}/benchmark-discord-channels.mjs" >/dev/null
+node "${SCRIPT_DIR}/benchmark-discord-identities.mjs" >/dev/null
 
 agent_count=$(( ${#PROCESS_NAMES[@]} - 2 ))
 metadata_path="${BENCHMARK_METADATA_PATH:-${RUNTIME_DIR}/run-metadata.json}"
