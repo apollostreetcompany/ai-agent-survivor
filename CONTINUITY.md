@@ -41,6 +41,7 @@ Success criteria:
 - All five Discord bot applications must have Message Content intent enabled in the Discord Developer Portal because the GM and agents read message content for arena protocol messages, admin commands, and benchmark signals.
 - Discord private-channel preflight uses explicit non-secret channel IDs and channel/message read endpoints, not guild-wide channel listing, so bots do not need broad channel-management permissions just to prove launch readiness.
 - Operators collect Discord server/channel/bot user IDs by enabling Discord Developer Mode and using Copy ID; tokens stay out of chat and only go into `packages/infra/.env`.
+- Runtime Discord channel binding uses the verified `DISCORD_*_CHANNEL_ID` values when configured; name lookup remains only a local/dev fallback.
 
 ## State
 ### Done
@@ -69,9 +70,10 @@ Success criteria:
 - [x] Bead 23: Discord Message Content intent readiness guidance on the runbook and landing page.
 - [x] Bead 24: Least-privilege Discord channel ID preflight for private-server launch readiness.
 - [x] Bead 25: Discord Developer Mode / Copy ID guidance for private-server setup.
+- [x] Bead 26: Runtime Discord channel ID binding for GM, agents, Docker, and local supervision.
 
 ### Now
-- [ ] Bead 26: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
+- [ ] Bead 27: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
 
 ### Next
 - [ ] Publish Season 1 launch status/results after the first real 10-day Discord run.
@@ -89,12 +91,14 @@ Success criteria:
 - `packages/gm-bot/src/engine/scheduler.ts`
 - `packages/gm-bot/src/engine/roster.ts`
 - `packages/gm-bot/src/discord/events/message-handler.ts`
+- `packages/gm-bot/src/discord/client.ts`
 - `packages/gm-bot/src/cli/season.ts`
 - `packages/gm-bot/src/ops/runtime.ts`
 - `packages/shared/src/types.ts`
 - `packages/shared/src/constants.ts`
 - `packages/shared/src/default-roster.json`
 - `packages/agent-template/src/agent.ts`
+- `packages/agent-template/src/discord-handler.ts`
 - `packages/agent-template/src/local-runner.ts`
 - `packages/infra/scripts/benchmark-start.sh`
 - `packages/infra/scripts/benchmark-doctor.mjs`
@@ -104,6 +108,9 @@ Success criteria:
 - `packages/infra/scripts/benchmark-metadata.mjs`
 - `packages/infra/scripts/benchmark-watchdog.sh`
 - `packages/infra/scripts/benchmark-common.sh`
+- `packages/infra/docker-compose.yml`
+- `packages/infra/test/compose-stack.test.js`
+- `packages/infra/test/runtime-supervision.test.js`
 - `packages/infra/RUNBOOK.md`
 - `docs/index.html`
 - `docs/styles.css`

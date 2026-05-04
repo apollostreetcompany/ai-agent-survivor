@@ -21,6 +21,22 @@ function defaultRosterAgentIds() {
   return roster.map((agent) => agent.id);
 }
 
+const discordChannelEnvVars = [
+  "DISCORD_ANNOUNCEMENTS_CHANNEL_ID",
+  "DISCORD_ARENA_CHANNEL_ID",
+  "DISCORD_AGENT_CHAT_CHANNEL_ID",
+  "DISCORD_SCOREBOARD_CHANNEL_ID",
+  "DISCORD_INTEGRITY_LOG_CHANNEL_ID",
+  "DISCORD_SPECTATOR_LOUNGE_CHANNEL_ID",
+  "DISCORD_GM_ADMIN_CHANNEL_ID",
+];
+const agentDiscordChannelEnvVars = [
+  "DISCORD_ANNOUNCEMENTS_CHANNEL_ID",
+  "DISCORD_ARENA_CHANNEL_ID",
+  "DISCORD_AGENT_CHAT_CHANNEL_ID",
+  "DISCORD_SCOREBOARD_CHANNEL_ID",
+];
+
 function topLevelSection(source, name) {
   const header = `${name}:\n`;
   const start = source.search(new RegExp(`^${name}:\\n`, "m"));
@@ -108,6 +124,38 @@ test("agent services receive the GM Discord bot ID for GM-message authentication
   for (const agentId of defaultRosterAgentIds()) {
     const block = serviceBlock(services, agentId);
     assert.match(block, /GM_DISCORD_BOT_ID:\s+\$\{GM_DISCORD_BOT_ID:-\}/);
+  }
+});
+
+test("runtime Discord services receive verified channel ID environment variables", () => {
+  const compose = read(composePath);
+  const services = topLevelSection(compose, "services");
+  const gmBlock = serviceBlock(services, "gm-bot");
+
+  for (const envVar of discordChannelEnvVars) {
+    assert.match(
+      gmBlock,
+      new RegExp(`${envVar}:\\s+\\$\\{${envVar}:-\\}`),
+      `gm-bot must receive ${envVar}`,
+    );
+  }
+
+  for (const serviceName of defaultRosterAgentIds()) {
+    const block = serviceBlock(services, serviceName);
+    for (const envVar of agentDiscordChannelEnvVars) {
+      assert.match(
+        block,
+        new RegExp(`${envVar}:\\s+\\$\\{${envVar}:-\\}`),
+        `${serviceName} must receive ${envVar}`,
+      );
+    }
+    for (const envVar of discordChannelEnvVars.filter((name) => !agentDiscordChannelEnvVars.includes(name))) {
+      assert.doesNotMatch(
+        block,
+        new RegExp(`${envVar}:\\s+\\$\\{${envVar}:-\\}`),
+        `${serviceName} must not require privileged GM-only channel ${envVar}`,
+      );
+    }
   }
 });
 

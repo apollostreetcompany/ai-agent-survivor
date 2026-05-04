@@ -23,6 +23,86 @@ const GM_PROTOCOL_CHANNELS = [
   CHANNELS.ARENA,
   CHANNELS.SCOREBOARD,
 ];
+const REQUIRED_RUNTIME_CHANNELS = [
+  CHANNELS.ANNOUNCEMENTS,
+  CHANNELS.ARENA,
+  CHANNELS.AGENT_CHAT,
+  CHANNELS.SCOREBOARD,
+];
+const CHANNEL_ID_ENV_BY_NAME: Record<string, string> = {
+  [CHANNELS.ANNOUNCEMENTS]: "DISCORD_ANNOUNCEMENTS_CHANNEL_ID",
+  [CHANNELS.ARENA]: "DISCORD_ARENA_CHANNEL_ID",
+  [CHANNELS.AGENT_CHAT]: "DISCORD_AGENT_CHAT_CHANNEL_ID",
+  [CHANNELS.SCOREBOARD]: "DISCORD_SCOREBOARD_CHANNEL_ID",
+};
+
+type ChannelLookupGuild = Pick<Guild, "id" | "channels">;
+
+function configuredChannelId(channelName: string): { envName: string; channelId: string } | undefined {
+  const envName = CHANNEL_ID_ENV_BY_NAME[channelName];
+  if (!envName) return undefined;
+
+  const channelId = process.env[envName]?.trim();
+  if (!channelId) return undefined;
+
+  return { envName, channelId };
+}
+
+function assertGuildTextChannel(
+  channel: unknown,
+  channelName: string,
+  envName: string,
+  expectedGuildId: string,
+): TextChannel {
+  const candidate = channel as Partial<TextChannel> & {
+    guildId?: string;
+    guild?: { id?: string };
+    id?: string;
+    name?: string;
+    type?: ChannelType;
+  };
+
+  if (!candidate) {
+    throw new Error(`Configured Discord channel ${envName} for #${channelName} was not found.`);
+  }
+
+  const actualGuildId = candidate.guildId ?? candidate.guild?.id;
+  if (actualGuildId && actualGuildId !== expectedGuildId) {
+    throw new Error(
+      `Configured Discord channel ${envName} for #${channelName} belongs to guild ${actualGuildId}, expected ${expectedGuildId}.`,
+    );
+  }
+
+  if (candidate.type !== ChannelType.GuildText) {
+    throw new Error(`Configured Discord channel ${envName} for #${channelName} is not a guild text channel.`);
+  }
+
+  if (candidate.name !== channelName) {
+    throw new Error(
+      `Configured Discord channel ${envName} resolved to #${candidate.name ?? "unknown"}, expected #${channelName}.`,
+    );
+  }
+
+  return candidate as TextChannel;
+}
+
+/** Resolve a launch channel by verified env ID when present, otherwise by name for local/dev. */
+export async function resolveRuntimeChannel(
+  lookupGuild: ChannelLookupGuild,
+  channelName: string,
+): Promise<TextChannel | undefined> {
+  const configured = configuredChannelId(channelName);
+  if (configured) {
+    const cached = lookupGuild.channels.cache.get(configured.channelId);
+    const fetched = cached ?? await lookupGuild.channels.fetch(configured.channelId);
+
+    return assertGuildTextChannel(fetched, channelName, configured.envName, lookupGuild.id);
+  }
+
+  return lookupGuild.channels.cache.find(
+    (c) => c.name === channelName && c.type === ChannelType.GuildText,
+  ) as TextChannel | undefined;
+}
 
 export type AgentMessageTransport = (
   encodedMessage: string,
@@ -121,15 +201,13 @@ export async function initAgentDiscord(
   if (!g) throw new Error(`Guild not found: ${guildId}`);
   guild = g;
 
-  // Cache channels
-  for (const name of Object.values(CHANNELS)) {
-    const ch = guild.channels.cache.find(
-      (c) => c.name === name && c.type === ChannelType.GuildText,
-    ) as TextChannel | undefined;
+  // Cache only the private channels agents are expected to access.
+  for (const name of REQUIRED_RUNTIME_CHANNELS) {
+    const ch = await resolveRuntimeChannel(guild, name);
     if (ch) channelCache.set(name, ch);
   }
 
-  const missingProtocolChannels = GM_PROTOCOL_CHANNELS.filter((name) => !channelCache.has(name));
+  const missingProtocolChannels = REQUIRED_RUNTIME_CHANNELS.filter((name) => !channelCache.has(name));
   if (missingProtocolChannels.length > 0) {
     throw new Error(`Missing required Discord channels for agent: ${missingProtocolChannels.join(", ")}`);
   }

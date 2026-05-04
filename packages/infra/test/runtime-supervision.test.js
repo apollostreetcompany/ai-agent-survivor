@@ -20,6 +20,21 @@ const requiredDiscordChannels = [
   "spectator-lounge",
   "gm-admin",
 ];
+const discordChannelEnvVars = [
+  "DISCORD_ANNOUNCEMENTS_CHANNEL_ID",
+  "DISCORD_ARENA_CHANNEL_ID",
+  "DISCORD_AGENT_CHAT_CHANNEL_ID",
+  "DISCORD_SCOREBOARD_CHANNEL_ID",
+  "DISCORD_INTEGRITY_LOG_CHANNEL_ID",
+  "DISCORD_SPECTATOR_LOUNGE_CHANNEL_ID",
+  "DISCORD_GM_ADMIN_CHANNEL_ID",
+];
+const agentDiscordChannelEnvVars = [
+  "DISCORD_ANNOUNCEMENTS_CHANNEL_ID",
+  "DISCORD_ARENA_CHANNEL_ID",
+  "DISCORD_AGENT_CHAT_CHANNEL_ID",
+  "DISCORD_SCOREBOARD_CHANNEL_ID",
+];
 const discordChannelIdsByName = {
   "gm-admin": "channel-gm-admin",
   announcements: "channel-announcements",
@@ -130,6 +145,24 @@ async function runDoctorAsync({ runtimeDir, envFile, env = {} } = {}) {
 
 function expectedRuntimeProcesses() {
   return ["game-data", "gm-bot", ...defaultRosterAgentIds()];
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, "'\\''")}'`;
+}
+
+function processCommand(processName) {
+  return execFileSync(
+    "bash",
+    ["-lc", `source ${shellQuote(resolve(scriptsDir, "benchmark-common.sh"))}; process_command ${shellQuote(processName)}`],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        BENCHMARK_ENV_FILE: resolve(infraRoot, ".env.test.missing"),
+      },
+    },
+  );
 }
 
 function writeExecutable(path, content) {
@@ -745,6 +778,35 @@ test("scripts map runbook credentials into workspace dev commands", () => {
   assert.match(common, /SURVIVOR_HEALTH_FILE="\$\{BENCHMARK_RUNTIME_DIR\}\/health\/agent-alpha\.heartbeat"/);
   assert.match(common, /bun --filter @survivor\/gm-bot start/);
   assert.match(common, /bun --filter @survivor\/agent-template start/);
+});
+
+test("local runtime commands pass verified Discord channel IDs to GM and agents", () => {
+  const gmCommand = processCommand("gm-bot");
+  for (const envVar of discordChannelEnvVars) {
+    assert.match(
+      gmCommand,
+      new RegExp(`${envVar}="\\$\\{${envVar}:-\\}"`),
+      `gm-bot must pass ${envVar}`,
+    );
+  }
+
+  for (const processName of defaultRosterAgentIds()) {
+    const command = processCommand(processName);
+    for (const envVar of agentDiscordChannelEnvVars) {
+      assert.match(
+        command,
+        new RegExp(`${envVar}="\\$\\{${envVar}:-\\}"`),
+        `${processName} must pass ${envVar}`,
+      );
+    }
+    for (const envVar of discordChannelEnvVars.filter((name) => !agentDiscordChannelEnvVars.includes(name))) {
+      assert.doesNotMatch(
+        command,
+        new RegExp(`${envVar}="\\$\\{${envVar}:-\\}"`),
+        `${processName} must not require privileged GM-only channel ${envVar}`,
+      );
+    }
+  }
 });
 
 test("env file runtime directory is honored by status script", () => {
