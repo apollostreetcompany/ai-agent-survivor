@@ -22,6 +22,7 @@ Optional runtime variables:
 | GM narration | `NARRATOR_API_KEY`, `NARRATOR_MODEL` |
 | Mail | `GM_MAIL_PASS`, `AGENT_ALPHA_MAIL_USER`, `AGENT_ALPHA_MAIL_PASS`, `AGENT_BRAVO_MAIL_USER`, `AGENT_BRAVO_MAIL_PASS`, `AGENT_CHARLIE_MAIL_USER`, `AGENT_CHARLIE_MAIL_PASS`, `AGENT_DELTA_MAIL_USER`, `AGENT_DELTA_MAIL_PASS` |
 | Local benchmark | `BENCHMARK_RUNTIME_DIR`, `BENCHMARK_METADATA_PATH`, `SURVIVOR_RUN_ID`, `GAME_DATA_PORT`, `MAX_LOG_AGE_SECONDS`, `MAX_HEALTH_AGE_SECONDS` |
+| Readiness doctor | `BENCHMARK_OPENCLAW_COMMAND`, `BENCHMARK_HERMES_COMMAND`, `BENCHMARK_DOCKER_COMMAND`, `BENCHMARK_REQUIRE_DOCKER` |
 
 Use `.env.example` as the non-secret template:
 
@@ -45,6 +46,7 @@ $EDITOR .env
 - Optional mail variables are either intentionally blank for local mail defaults or filled consistently.
 - Optional narrator variables are either blank or point at a valid narration provider key/model.
 - Local dependencies are installed with `bun install`.
+- `bun run benchmark:doctor` reports `doctor: "ok"` before the public launch. It prints JSON and never includes token or API key values.
 - `bun run benchmark:preflight` passes before `benchmark:start`.
 - Docker validation requires Docker installed and a working `docker compose` command.
 
@@ -111,13 +113,14 @@ Use infra scripts to run the local game-data feed, the GM, and four local agent 
 
 ```sh
 cd packages/infra
+bun run benchmark:doctor
 bun run benchmark:preflight
 bun run benchmark:start
 bun run benchmark:status
 bun run benchmark:stop
 ```
 
-`benchmark:preflight` verifies the live credential contract before launch: required Discord/LLM/OpenClaw/Hermes variables are present, GM/agent Discord tokens are unique, agent bot user IDs are unique, cloud seat IDs are unique, and agent LLM API keys are unique. It writes a non-secret run manifest to `BENCHMARK_METADATA_PATH` or `BENCHMARK_RUNTIME_DIR/run-metadata.json`; publish this with Season 1 results. `benchmark:start` runs the same preflight, builds the workspace, maps the runbook credentials into each local process (`GM_DISCORD_TOKEN` → GM `DISCORD_TOKEN`, per-agent Discord/LLM keys → agent `DISCORD_TOKEN`/`LLM_API_KEY`), starts a local `/tasks` and `/market-feed` server on `GAME_DATA_PORT`, and writes PID, log, heartbeat, manifest, and status files under `BENCHMARK_RUNTIME_DIR` (default: `packages/infra/.runtime/discord-benchmark`). `benchmark:status` emits JSON status suitable for OpenClaw ingestion.
+`benchmark:doctor` is the live readiness audit. It checks that `.env` exists, required launch variables are present, declared OpenClaw/Hermes commands are available, optional Docker compose validation is possible, and `benchmark:preflight` succeeds. `benchmark:preflight` verifies the live credential contract before launch: required Discord/LLM/OpenClaw/Hermes variables are present, GM/agent Discord tokens are unique, agent bot user IDs are unique, cloud seat IDs are unique, and agent LLM API keys are unique. It writes a non-secret run manifest to `BENCHMARK_METADATA_PATH` or `BENCHMARK_RUNTIME_DIR/run-metadata.json`; publish this with Season 1 results. `benchmark:start` runs the same preflight, builds the workspace, maps the runbook credentials into each local process (`GM_DISCORD_TOKEN` → GM `DISCORD_TOKEN`, per-agent Discord/LLM keys → agent `DISCORD_TOKEN`/`LLM_API_KEY`), starts a local `/tasks` and `/market-feed` server on `GAME_DATA_PORT`, and writes PID, log, heartbeat, manifest, and status files under `BENCHMARK_RUNTIME_DIR` (default: `packages/infra/.runtime/discord-benchmark`). `benchmark:status` emits JSON status suitable for OpenClaw ingestion.
 
 Run watchdog once (or from cron) to restart missing/stale processes:
 
@@ -178,9 +181,10 @@ Before the live dry run:
 ```sh
 bun --filter @survivor/infra test
 bun run test
+cd packages/infra && bun run benchmark:doctor
 cd packages/infra && bun run benchmark:preflight
 ```
 
 Use `bun run test` instead of raw `bun test`; the configured script routes GM tests through Node so `better-sqlite3` loads correctly.
 
-Proceed only when static readiness tests pass, local smoke succeeds for at least `agent-alpha`, Docker compose starts with real credentials, and `!season status` in `#gm-admin` reports the expected active Day 1 season.
+Proceed only when `benchmark:doctor` reports no blockers, static readiness tests pass, local smoke succeeds for at least `agent-alpha`, Docker compose starts with real credentials, and `!season status` in `#gm-admin` reports the expected active Day 1 season.

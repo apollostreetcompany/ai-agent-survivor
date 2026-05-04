@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -17,6 +17,7 @@ const scripts = {
   stop: resolve(scriptsDir, "benchmark-stop.sh"),
   status: resolve(scriptsDir, "benchmark-status.sh"),
   watchdog: resolve(scriptsDir, "benchmark-watchdog.sh"),
+  doctor: resolve(scriptsDir, "benchmark-doctor.mjs"),
 };
 
 function run(scriptPath, args = [], { runtimeDir, envFile = resolve(infraRoot, ".env.test.missing"), env = {} } = {}) {
@@ -38,6 +39,22 @@ function run(scriptPath, args = [], { runtimeDir, envFile = resolve(infraRoot, "
 function defaultRosterAgentIds() {
   const roster = JSON.parse(readFileSync(sharedDefaultRosterPath, "utf8"));
   return roster.map((agent) => agent.id);
+}
+
+function runDoctor({ runtimeDir, envFile, env = {} } = {}) {
+  const childEnv = {
+    ...process.env,
+    BENCHMARK_ENV_FILE: envFile,
+    ...env,
+  };
+  if (runtimeDir) {
+    childEnv.BENCHMARK_RUNTIME_DIR = runtimeDir;
+  }
+
+  return spawnSync(scripts.doctor, {
+    encoding: "utf8",
+    env: childEnv,
+  });
 }
 
 function expectedRuntimeProcesses() {
@@ -169,6 +186,119 @@ test("benchmark preflight rejects undisclosed or unsupported cloud runtimes", ()
       () => run(scripts.preflight, [], { envFile }),
       /AGENT_ALPHA_CLOUD_SEAT_PROVIDER must be one of: openclaw, hermes/,
     );
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark doctor fails when packages/infra/.env is missing", () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-missing-env-"));
+  const envFile = resolve(tempRoot, ".env");
+
+  try {
+    const doctor = runDoctor({ envFile });
+    assert.notEqual(doctor.status, 0);
+
+    const report = JSON.parse(doctor.stdout);
+    assert.equal(report.doctor, "blocked");
+    assert.equal(report.env.present, false);
+    assert.equal(report.checks.some((check) => check.id === "env-file" && check.status === "fail"), true);
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark doctor fails when required docker command is missing", () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-missing-docker-"));
+  const envFile = resolve(tempRoot, ".env");
+  const runtimeDir = resolve(tempRoot, "runtime");
+
+  try {
+    writeValidBenchmarkEnv(envFile, {
+      BENCHMARK_REQUIRE_DOCKER: "1",
+      BENCHMARK_DOCKER_COMMAND: "docker-does-not-exist",
+      BENCHMARK_OPENCLAW_COMMAND: "sh",
+      BENCHMARK_HERMES_COMMAND: "sh",
+    });
+
+    const doctor = runDoctor({ envFile, runtimeDir });
+    assert.notEqual(doctor.status, 0);
+
+    const report = JSON.parse(doctor.stdout);
+    assert.equal(report.checks.some((check) => check.id === "docker-command" && check.status === "fail"), true);
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark doctor validates OpenClaw/Hermes command availability from env", () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-provider-check-"));
+  const envFile = resolve(tempRoot, ".env");
+  const runtimeDir = resolve(tempRoot, "runtime");
+
+  try {
+    writeValidBenchmarkEnv(envFile, {
+      BENCHMARK_OPENCLAW_COMMAND: "sh",
+      BENCHMARK_HERMES_COMMAND: "hermes-does-not-exist",
+    });
+
+    const doctor = runDoctor({ envFile, runtimeDir });
+    assert.notEqual(doctor.status, 0);
+
+    const report = JSON.parse(doctor.stdout);
+    assert.equal(report.checks.some((check) => check.id === "openclaw-command" && check.status === "pass"), true);
+    assert.equal(report.checks.some((check) => check.id === "hermes-command" && check.status === "fail"), true);
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark doctor integrates preflight and never prints secret values", () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-preflight-"));
+  const envFile = resolve(tempRoot, ".env");
+  const runtimeDir = resolve(tempRoot, "runtime");
+
+  try {
+    writeValidBenchmarkEnv(envFile, {
+      AGENT_DELTA_DISCORD_TOKEN: "alpha-discord-token",
+      BENCHMARK_OPENCLAW_COMMAND: "sh",
+      BENCHMARK_HERMES_COMMAND: "sh",
+    });
+
+    const doctor = runDoctor({ envFile, runtimeDir });
+    assert.notEqual(doctor.status, 0);
+    assert.equal(doctor.stdout.includes("alpha-discord-token"), false);
+    assert.equal(doctor.stdout.includes("alpha-llm-key"), false);
+
+    const report = JSON.parse(doctor.stdout);
+    assert.equal(report.preflight.ok, false);
+    assert.equal(report.checks.some((check) => check.id === "preflight" && check.status === "fail"), true);
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("benchmark doctor passes with complete live readiness evidence", () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-doctor-ok-"));
+  const envFile = resolve(tempRoot, ".env");
+  const runtimeDir = resolve(tempRoot, "runtime");
+
+  try {
+    writeValidBenchmarkEnv(envFile, {
+      BENCHMARK_OPENCLAW_COMMAND: "sh",
+      BENCHMARK_HERMES_COMMAND: "sh",
+      BENCHMARK_REQUIRE_DOCKER: "false",
+    });
+
+    const doctor = runDoctor({ envFile, runtimeDir });
+    assert.equal(doctor.status, 0);
+
+    const report = JSON.parse(doctor.stdout);
+    assert.equal(report.doctor, "ok");
+    assert.equal(report.preflight.ok, true);
+    assert.equal(report.metadata.path, resolve(runtimeDir, "run-metadata.json"));
+    assert.equal(doctor.stdout.includes("alpha-discord-token"), false);
+    assert.equal(doctor.stdout.includes("alpha-llm-key"), false);
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }

@@ -19,6 +19,7 @@ Success criteria:
 - A publishable first run must use a clean Day 1 reset, the canonical four-agent roster, separate Discord bot user IDs, and disclosed OpenClaw/Hermes watchdog supervision.
 - `benchmark:start` must not launch a public run until `benchmark:preflight` verifies required live credentials and uniqueness.
 - `benchmark:preflight` writes a non-secret run metadata manifest so the public results can disclose cloud seats, models, bot IDs, git SHA, and fairness settings without leaking tokens or API keys.
+- `benchmark:doctor` is the live readiness audit before `benchmark:preflight`; it reports blockers as JSON without printing token or API key values.
 
 ## Key Decisions
 - Bead 1 is focused on deterministic agent bootstrap and game activation, not Discord admin commands.
@@ -28,6 +29,7 @@ Success criteria:
 - Live Discord agent messages are accepted only when the claimed roster ID matches the registered Discord bot user ID.
 - The local supervised benchmark path has an explicit credential preflight gate; missing credentials are a launch blocker, not a runtime surprise.
 - OpenClaw/Hermes runtime fairness is represented as required public disclosure: watchdog supervisor, cloud seat provider/ID per roster agent, LLM provider/model per seat, and watchdog announcement target.
+- The live launch must not be called ready unless `benchmark:doctor` reports `doctor: "ok"` and `benchmark:preflight` succeeds with real values.
 
 ## State
 ### Done
@@ -45,9 +47,10 @@ Success criteria:
 - [x] Bead 12: Shared canonical roster with fresh fair setup, Discord identity checks, and publishable first-run instructions.
 - [x] Bead 13: Launch credential preflight gate for known-fair Discord/OpenClaw runs.
 - [x] Bead 14: Non-secret run metadata manifest and OpenClaw/Hermes disclosure gate.
+- [x] Bead 15: Live readiness doctor for credentials, OpenClaw/Hermes tools, and preflight evidence.
 
 ### Now
-- [ ] Bead 15: Run the live Discord launch preflight with real credentials, Docker available, and OpenClaw/Hermes hourly watchdog enabled.
+- [ ] Bead 16: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
 
 ### Next
 - [ ] Publish Season 1 launch status/results after the first real 10-day Discord run.
@@ -72,6 +75,7 @@ Success criteria:
 - `packages/agent-template/src/agent.ts`
 - `packages/agent-template/src/local-runner.ts`
 - `packages/infra/scripts/benchmark-start.sh`
+- `packages/infra/scripts/benchmark-doctor.mjs`
 - `packages/infra/scripts/benchmark-preflight.sh`
 - `packages/infra/scripts/benchmark-metadata.mjs`
 - `packages/infra/scripts/benchmark-watchdog.sh`
@@ -88,6 +92,7 @@ Useful commands:
 - `bun --filter @survivor/gm-bot test`
 - `bun --filter @survivor/agent-template test`
 - `bun --filter @survivor/infra test`
+- `cd packages/infra && bun run benchmark:doctor`
 - `cd packages/infra && bun run benchmark:preflight`
 - `cd packages/infra && bun run benchmark:start`
 - `cd packages/infra && bun run benchmark:status`

@@ -252,6 +252,7 @@
               <h3>Start and supervise</h3>
               <ol class="command-list">
                 <li><code>cd packages/infra</code></li>
+                <li><code>bun run benchmark:doctor</code></li>
                 <li><code>bun run benchmark:preflight</code></li>
                 <li><code>bun run benchmark:start</code></li>
                 <li><code>bun run benchmark:status</code></li>
@@ -275,11 +276,11 @@
             The full operator checklist lives in
             <a href="https://github.com/thefutureisw0rk/agent-survivor/blob/main/packages/infra/RUNBOOK.md">packages/infra/RUNBOOK.md</a>.
             Do not start the public run until <code>bun run test</code>, all
-            four local smokes, <code>benchmark:status</code>, and
-            <code>!season status</code> all pass with the same four active
-            roster agents. Publish <code>run-metadata.json</code> with the
-            results so every OpenClaw/Hermes seat, model, and bot identity is
-            inspectable.
+            four local smokes, <code>benchmark:doctor</code>,
+            <code>benchmark:status</code>, and <code>!season status</code> all
+            pass with the same four active roster agents. Publish
+            <code>run-metadata.json</code> with the results so every
+            OpenClaw/Hermes seat, model, and bot identity is inspectable.
           </p>
         </section>
 

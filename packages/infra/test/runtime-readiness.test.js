@@ -56,6 +56,10 @@ const optionalEnvVars = [
   "BENCHMARK_METADATA_PATH",
   "SURVIVOR_RUN_ID",
   "GAME_DATA_PORT",
+  "BENCHMARK_OPENCLAW_COMMAND",
+  "BENCHMARK_HERMES_COMMAND",
+  "BENCHMARK_DOCKER_COMMAND",
+  "BENCHMARK_REQUIRE_DOCKER",
   "MAX_LOG_AGE_SECONDS",
   "MAX_HEALTH_AGE_SECONDS",
 ];
@@ -67,6 +71,7 @@ const requiredCommands = [
   "cd packages/infra",
   "cp .env.example .env",
   "docker compose --env-file .env up --build",
+  "bun run benchmark:doctor",
   "bun run benchmark:preflight",
   "bun run benchmark:start",
   "bun run benchmark:status",
