@@ -1,5 +1,6 @@
 services:
   gm-bot:
+    restart: unless-stopped
     build:
       context: ../..
       dockerfile: packages/gm-bot/Dockerfile
@@ -27,6 +28,7 @@ services:
       - game-data
 
   agent-alpha:
+    restart: unless-stopped
     build:
       context: ../..
       dockerfile: packages/agent-template/Dockerfile
@@ -54,6 +56,7 @@ services:
       - game-data
 
   agent-bravo:
+    restart: unless-stopped
     build:
       context: ../..
       dockerfile: packages/agent-template/Dockerfile
@@ -81,6 +84,7 @@ services:
       - game-data
 
   agent-charlie:
+    restart: unless-stopped
     build:
       context: ../..
       dockerfile: packages/agent-template/Dockerfile
@@ -108,6 +112,7 @@ services:
       - game-data
 
   agent-delta:
+    restart: unless-stopped
     build:
       context: ../..
       dockerfile: packages/agent-template/Dockerfile
@@ -135,6 +140,7 @@ services:
       - game-data
 
   mail:
+    restart: unless-stopped
     image: mailserver/docker-mailserver:latest
     hostname: mail.survivor.local
     domainname: survivor.local
@@ -159,6 +165,7 @@ services:
           - mail.survivor.local
 
   calendar:
+    restart: unless-stopped
     image: tomsquest/docker-radicale:latest
     volumes:
       - calendar-data:/data
@@ -168,10 +175,17 @@ services:
           - calendar.survivor.local
 
   game-data:
+    restart: unless-stopped
     image: nginx:alpine
     volumes:
       - game-data-content:/usr/share/nginx/html:ro
       - ./game-data-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/tasks || wget -q --spider http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       game-net:
         aliases:

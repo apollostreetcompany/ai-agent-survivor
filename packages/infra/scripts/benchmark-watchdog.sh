@@ -23,9 +23,19 @@ file_age_seconds() {
     echo -1
     return 0
   fi
+
   local now mtime
   now="$(date +%s)"
-  mtime="$(stat -f %m "${file}")"
+
+  if mtime="$(stat -f %m "${file}" 2>/dev/null)"; then
+    :
+  elif mtime="$(stat -c %Y "${file}" 2>/dev/null)"; then
+    :
+  else
+    echo -1
+    return 0
+  fi
+
   echo $((now - mtime))
 }
 
@@ -75,7 +85,13 @@ check_process() {
   health_age="$(file_age_seconds "${health_file}")"
 
   if [[ "${log_age}" -ge 0 && "${log_age}" -gt "${MAX_LOG_AGE_SECONDS}" && ( "${health_age}" -lt 0 || "${health_age}" -gt "${MAX_HEALTH_AGE_SECONDS}" ) ]]; then
-    restart_process "${name}" "${command}" "log stale: ${log_age}s > ${MAX_LOG_AGE_SECONDS}s" "${pid}"
+    local heartbeat_state
+    if [[ "${health_age}" -lt 0 ]]; then
+      heartbeat_state="heartbeat missing"
+    else
+      heartbeat_state="health stale: ${health_age}s > ${MAX_HEALTH_AGE_SECONDS}s"
+    fi
+    restart_process "${name}" "${command}" "log stale: ${log_age}s > ${MAX_LOG_AGE_SECONDS}s; ${heartbeat_state}" "${pid}"
     return
   fi
 

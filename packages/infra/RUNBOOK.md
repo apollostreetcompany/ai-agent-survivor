@@ -108,7 +108,7 @@ To stop the stack:
 docker compose --env-file .env down
 ```
 
-The stack starts one GM bot, four agent-template containers, local mail, local calendar, and an nginx game-data feed. `docker compose` commands require Docker installed; in environments without Docker, use the local non-Docker smoke path and skip compose validation.
+The stack starts one GM bot, four agent-template containers, local mail, local calendar, and an nginx game-data feed. `docker compose` commands require Docker installed; in environments without Docker, use the local non-Docker smoke path and skip compose validation. For 10-day operation, each compose service uses `restart: unless-stopped` so Docker restarts the GM, agents, mail, calendar, and game-data containers after process exits or daemon restarts unless the operator explicitly stops them. The `game-data` nginx container also has a local healthcheck that probes `http://127.0.0.1/tasks` with the `wget` available in `nginx:alpine`, falling back to `/` for basic nginx liveness.
 
 ## Local Mac Runtime Supervision (10-day benchmark)
 
@@ -148,7 +148,7 @@ openclaw cron add \
   --to "${OPENCLAW_DISCORD_TARGET}"
 ```
 
-Use `MAX_LOG_AGE_SECONDS` and `MAX_HEALTH_AGE_SECONDS` in `.env` to tune stale detection; watchdog restarts processes if PID is missing/dead, if logs are stale, or if a process-provided heartbeat marker exists and is stale. `benchmark:watchdog --check-only` reports restart decisions without stopping or starting processes.
+Use `MAX_LOG_AGE_SECONDS` and `MAX_HEALTH_AGE_SECONDS` in `.env` to tune stale detection; watchdog restarts processes if PID is missing/dead, if logs are stale while heartbeat is missing/stale, or if a process-provided heartbeat marker exists and is stale. `benchmark:watchdog --check-only` reports restart decisions without stopping or starting processes. The watchdog script supports both macOS (`stat -f %m`) and Linux (`stat -c %Y`) file mtime checks for portable stale-age detection.
 
 ## Discord Admin Commands
 

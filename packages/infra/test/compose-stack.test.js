@@ -101,6 +101,17 @@ test("gm-bot receives Discord bot IDs for live agent identity checks", () => {
   assert.match(gmBlock, /AGENT_DELTA_DISCORD_BOT_ID:\s+\$\{AGENT_DELTA_DISCORD_BOT_ID:-\}/);
 });
 
+test("runtime services use restart policies for 10-day runtime hardening", () => {
+  const compose = read(composePath);
+  const services = topLevelSection(compose, "services");
+  const required = ["gm-bot", ...defaultRosterAgentIds(), "mail", "calendar", "game-data"];
+
+  for (const serviceName of required) {
+    const block = serviceBlock(services, serviceName);
+    assert.match(block, /restart:\s+unless-stopped/, `${serviceName} must set restart: unless-stopped`);
+  }
+});
+
 test("game-data service routes agent API paths to GM-written feed files", () => {
   const compose = read(composePath);
   const services = topLevelSection(compose, "services");
@@ -116,4 +127,17 @@ test("game-data service routes agent API paths to GM-written feed files", () => 
   assert.match(nginxConfig, /try_files \/api\/tasks\.json =404/);
   assert.match(nginxConfig, /location = \/market-feed/);
   assert.match(nginxConfig, /try_files \/api\/market-feed\.json =404/);
+});
+
+test("game-data has an nginx-local healthcheck for feed availability", () => {
+  const compose = read(composePath);
+  const services = topLevelSection(compose, "services");
+  const gameDataBlock = serviceBlock(services, "game-data");
+
+  assert.match(gameDataBlock, /healthcheck:/);
+  assert.match(gameDataBlock, /wget\s+-q\s+--spider\s+http:\/\/127\.0\.0\.1\/tasks/);
+  assert.match(gameDataBlock, /interval:\s+30s/);
+  assert.match(gameDataBlock, /timeout:\s+5s/);
+  assert.match(gameDataBlock, /retries:\s+5/);
+  assert.match(gameDataBlock, /start_period:\s+30s/);
 });

@@ -34,6 +34,7 @@ Success criteria:
 - Known-fair cloud seat evidence requires the declared `AGENT_*_CLOUD_SEAT_ID` values to appear in `BENCHMARK_OPENCLAW_SEATS_COMMAND` / `BENCHMARK_HERMES_SEATS_COMMAND` output.
 - The Discord arena should run in a private server or private benchmark category; `#arena` stays on normal message permissions because fairness is enforced by Discord author ID checks, while mention-only is acceptable for `#agent-chat` or watchdog ops announcements.
 - `.env.example` must be shell-sourceable after `cp .env.example .env`; command values with spaces must be quoted so the runtime scripts can load the template before secrets are filled.
+- The 10-day runtime should restart crashed Docker services and detect stale local supervised processes, including live PIDs with stale logs and missing heartbeats.
 
 ## State
 ### Done
@@ -55,9 +56,10 @@ Success criteria:
 - [x] Bead 16: Provider seat verification for declared OpenClaw/Hermes cloud seats.
 - [x] Bead 17: Private Discord setup guidance for channel permissions and mention-only boundaries.
 - [x] Bead 18: Shell-sourceable benchmark env template with regression coverage.
+- [x] Bead 19: 10-day runtime hardening for Docker restart policies, game-data healthcheck, and watchdog stale detection.
 
 ### Now
-- [ ] Bead 19: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
+- [ ] Bead 20: Run the live Discord launch preflight with real credentials, known-fair OpenClaw/Hermes seats, and hourly watchdog enabled.
 
 ### Next
 - [ ] Publish Season 1 launch status/results after the first real 10-day Discord run.

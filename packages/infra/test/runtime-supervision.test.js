@@ -511,6 +511,7 @@ test("watchdog check-only mode does not kill stale running processes", () => {
     const events = readFileSync(resolve(runtimeDir, "events.jsonl"), "utf8");
     assert.match(events, /"process":"gm-bot"/);
     assert.match(events, /log stale/);
+    assert.match(events, /heartbeat missing/);
   } finally {
     try {
       process.kill(sleeper.pid, "SIGKILL");
@@ -518,5 +519,56 @@ test("watchdog check-only mode does not kill stale running processes", () => {
       // Already exited.
     }
     rmSync(runtimeDir, { recursive: true, force: true });
+  }
+});
+
+test("watchdog supports stat fallback for Linux-style file mtime checks", () => {
+  const runtimeDir = mkdtempSync(resolve(tmpdir(), "infra-watchdog-stat-fallback-"));
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "infra-watchdog-stat-bin-"));
+  const fakeBin = resolve(tempRoot, "bin");
+  const sleeper = spawn("sleep", ["30"], { stdio: "ignore" });
+
+  try {
+    const pidsDir = resolve(runtimeDir, "pids");
+    const logsDir = resolve(runtimeDir, "logs");
+    mkdirSync(pidsDir, { recursive: true });
+    mkdirSync(logsDir, { recursive: true });
+    mkdirSync(fakeBin, { recursive: true });
+
+    for (const processName of expectedRuntimeProcesses()) {
+      writeFileSync(resolve(pidsDir, `${processName}.pid`), "999999\n");
+      writeFileSync(resolve(logsDir, `${processName}.log`), "\n");
+    }
+
+    writeFileSync(resolve(pidsDir, "gm-bot.pid"), `${sleeper.pid}\n`);
+    const gmLog = resolve(logsDir, "gm-bot.log");
+    const old = new Date(Date.now() - 60_000);
+    utimesSync(gmLog, old, old);
+
+    const fakeStatPath = resolve(fakeBin, "stat");
+    writeExecutable(
+      fakeStatPath,
+      "#!/bin/sh\nif [ \"$1\" = \"-f\" ]; then\n  exit 1\nfi\nif [ \"$1\" = \"-c\" ] && [ \"$2\" = \"%Y\" ]; then\n  date -r \"$3\" +%s\n  exit 0\nfi\nexit 1\n",
+    );
+
+    run(scripts.watchdog, ["--check-only"], {
+      runtimeDir,
+      env: {
+        MAX_LOG_AGE_SECONDS: "1",
+        PATH: `${fakeBin}:${process.env.PATH}`,
+      },
+    });
+
+    const events = readFileSync(resolve(runtimeDir, "events.jsonl"), "utf8");
+    assert.match(events, /"process":"gm-bot"/);
+    assert.match(events, /heartbeat missing/);
+  } finally {
+    try {
+      process.kill(sleeper.pid, "SIGKILL");
+    } catch {
+      // Already exited.
+    }
+    rmSync(runtimeDir, { recursive: true, force: true });
+    rmSync(tempRoot, { recursive: true, force: true });
   }
 });
