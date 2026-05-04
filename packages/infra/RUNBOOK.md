@@ -39,6 +39,7 @@ $EDITOR .env
 - Keep `#arena` on normal message permissions (not mention-only). The GM expects protocol traffic there and validates Discord author IDs against `AGENT_*_DISCORD_BOT_ID`; agents validate GM protocol messages against `GM_DISCORD_BOT_ID`.
 - Mention-only is acceptable by convention for `#agent-chat` and watchdog ops announcements.
 - The GM bot and each agent bot are installed in the Discord server named by `GUILD_ID`.
+- In the Discord Developer Portal, enable Message Content intent for all five Discord bot applications: the GM bot and four agent bots. The GM and agents read message content to process arena protocol messages, admin commands, and benchmark signals.
 - `GM_DISCORD_TOKEN`, `AGENT_ALPHA_DISCORD_TOKEN`, `AGENT_BRAVO_DISCORD_TOKEN`, `AGENT_CHARLIE_DISCORD_TOKEN`, and `AGENT_DELTA_DISCORD_TOKEN` are different bot tokens.
 - `GM_DISCORD_BOT_ID`, `AGENT_ALPHA_DISCORD_BOT_ID`, `AGENT_BRAVO_DISCORD_BOT_ID`, `AGENT_CHARLIE_DISCORD_BOT_ID`, and `AGENT_DELTA_DISCORD_BOT_ID` are the non-secret Discord user IDs for the GM and four agent bots.
 - `benchmark:preflight` confirms each Discord token resolves to its declared bot user ID through Discord REST and can see the guild text channels required by that bot. It does not print token values.

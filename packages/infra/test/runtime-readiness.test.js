@@ -6,7 +6,9 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const infraRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const repoRoot = resolve(infraRoot, "../..");
 const runbookPath = resolve(infraRoot, "RUNBOOK.md");
+const landingPagePath = resolve(repoRoot, "docs/index.html");
 const envExamplePath = resolve(infraRoot, ".env.example");
 
 const requiredEnvVars = [
@@ -112,6 +114,33 @@ test("runtime runbook names every required launch credential and command", () =>
   assert.match(runbook, /blank credentials/i);
   assert.match(runbook, /fail loud/i);
   assert.match(runbook, /Docker installed/i);
+});
+
+test("Discord Message Content intent stays documented for all benchmark bots", () => {
+  const runbook = readRequiredFile(runbookPath);
+  const landingPage = readRequiredFile(landingPagePath);
+
+  for (const [name, source] of [
+    ["runbook", runbook],
+    ["landing page", landingPage],
+  ]) {
+    assert.match(source, /Message Content intent/i, `${name} must document the Message Content intent`);
+    assert.match(
+      source,
+      /Discord Developer Portal/i,
+      `${name} must point operators to the Discord Developer Portal`,
+    );
+    assert.match(
+      source,
+      /GM[^.]*agents[^.]*read message content|GM[^.]*agent[^.]*read message content/i,
+      `${name} must explain why the GM and agents need message content`,
+    );
+    assert.match(
+      source,
+      /five Discord bot applications|GM bot and four agent bots/i,
+      `${name} must apply the requirement to all five bot applications`,
+    );
+  }
 });
 
 test("env example preserves the required non-secret runtime keys", () => {
